@@ -1,0 +1,1676 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Contrôle Bout de Ligne</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&family=Bebas+Neue&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --ink:        #0f1923;
+  --ink2:       #1e2d3d;
+  --sky:        #1a73e8;
+  --sky-dark:   #1557c0;
+  --sky-light:  #e8f0fe;
+  --gold:       #f9a825;
+  --gold-dark:  #c77800;
+  --gold-bg:    #fff8e1;
+  --water:      #0288d1;
+  --water-bg:   #e1f5fe;
+  --elec:       #f57f17;
+  --elec-bg:    #fff3e0;
+  --green:      #1b7340;
+  --green-bg:   #e8f5e9;
+  --red:        #c62828;
+  --red-bg:     #ffebee;
+  --orange:     #e65100;
+  --bg:         #f0f4f8;
+  --card:       #ffffff;
+  --border:     #d0dae6;
+  --text:       #0f1923;
+  --muted:      #4a6080;
+  --shadow:     0 2px 10px rgba(15,25,35,0.08);
+  --shadow-lg:  0 6px 24px rgba(15,25,35,0.14);
+  --radius:     12px;
+}
+
+html { -webkit-tap-highlight-color: transparent; }
+body {
+  font-family: 'DM Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  padding-bottom: 76px;
+  min-height: 100vh;
+}
+
+/* ── HEADER ── */
+header {
+  background: var(--ink);
+  color: white;
+  padding: 0 16px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  align-items: stretch;
+  height: 58px;
+  gap: 10px;
+}
+.header-brand { display: flex; align-items: center; gap: 10px; flex: 1; }
+.header-icon {
+  width: 36px; height: 36px;
+  background: var(--sky);
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; flex-shrink: 0;
+}
+.header-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 22px; letter-spacing: 1px; line-height: 1.1;
+}
+.header-sub { font-size: 10px; color: rgba(255,255,255,0.5); font-weight: 400; }
+.db-pill {
+  display: flex; align-items: center; gap: 5px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 20px;
+  padding: 4px 10px; font-size: 11px; font-weight: 700;
+  color: var(--gold); align-self: center; white-space: nowrap;
+}
+.db-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--gold); }
+
+/* ── BOTTOM NAV ── */
+.bottom-nav {
+  position: fixed; bottom: 0; left: 0; width: 100%;
+  background: var(--ink);
+  display: flex; justify-content: space-around;
+  z-index: 100;
+  box-shadow: 0 -2px 12px rgba(0,0,0,0.2);
+  height: 64px;
+}
+.nav-item {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  color: rgba(255,255,255,0.4); font-size: 10px; font-weight: 700;
+  cursor: pointer; flex: 1; gap: 4px;
+  border-top: 3px solid transparent;
+  transition: all 0.2s;
+  text-transform: uppercase; letter-spacing: 0.5px;
+}
+.nav-item.active { color: var(--gold); border-top-color: var(--gold); background: rgba(249,168,37,0.06); }
+.nav-icon { font-size: 20px; }
+
+/* ── TABS ── */
+.tab-content { display: none; padding: 14px; max-width: 640px; margin: 0 auto; }
+.tab-content.active { display: block; animation: fadeUp 0.25s ease; }
+@keyframes fadeUp { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+
+/* ── CARDS ── */
+.card {
+  background: var(--card);
+  border-radius: var(--radius);
+  padding: 16px;
+  box-shadow: var(--shadow);
+  margin-bottom: 14px;
+  border: 1px solid rgba(208,218,230,0.6);
+}
+.card-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 16px; letter-spacing: 0.8px;
+  color: var(--ink);
+  margin-bottom: 14px;
+  border-bottom: 2px solid var(--bg);
+  padding-bottom: 10px;
+  display: flex; justify-content: space-between; align-items: center;
+}
+.card-step {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 24px; height: 24px;
+  background: var(--sky); color: white;
+  border-radius: 50%; font-size: 12px; font-weight: 700;
+  margin-right: 8px; flex-shrink: 0;
+}
+
+/* ── AGENT BANNER ── */
+.agent-banner {
+  background: linear-gradient(135deg, var(--ink) 0%, var(--ink2) 100%);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  margin-bottom: 14px;
+  color: white;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.agent-banner-icon { font-size: 28px; flex-shrink: 0; }
+.agent-banner-info { flex: 1; min-width: 0; }
+.agent-banner-title { font-weight: 700; font-size: 14px; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.agent-banner-sub { font-size: 11px; color: rgba(255,255,255,0.55); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.agent-banner-edit {
+  font-size: 11px; font-weight: 700;
+  background: rgba(249,168,37,0.18); border: 1px solid rgba(249,168,37,0.4);
+  color: var(--gold); padding: 4px 10px; border-radius: 20px; flex-shrink: 0;
+}
+
+/* ── FORM ── */
+.form-group { margin-bottom: 12px; }
+label {
+  display: block; font-size: 11px; font-weight: 700;
+  color: var(--muted); margin-bottom: 5px;
+  text-transform: uppercase; letter-spacing: 0.5px;
+}
+input[type="text"], input[type="number"], input[type="date"], select, textarea {
+  width: 100%;
+  padding: 12px 13px;
+  border: 2px solid var(--border);
+  border-radius: 10px;
+  font-size: 15px;
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 500;
+  background: #f7fafd;
+  color: var(--text);
+  transition: all 0.2s;
+  -webkit-appearance: none;
+}
+textarea { resize: vertical; min-height: 70px; font-size: 14px; }
+input:focus, select:focus, textarea:focus {
+  outline: none; border-color: var(--sky); background: white;
+  box-shadow: 0 0 0 3px rgba(26,115,232,0.1);
+}
+input::placeholder, textarea::placeholder { color: #9ab0c8; }
+.search-row { display: flex; gap: 8px; }
+.btn-search {
+  width: 100%; margin-top: 10px;
+  background: var(--sky); color: white; border: none;
+  border-radius: 10px; padding: 13px;
+  font-size: 15px; font-weight: 700;
+  font-family: 'DM Sans', sans-serif;
+  cursor: pointer; transition: all 0.15s;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  box-shadow: 0 3px 10px rgba(26,115,232,0.25);
+}
+.btn-search:active { transform: scale(0.98); background: var(--sky-dark); }
+
+/* ── FLUIDE SELECTOR ── */
+.fluide-selector { display: flex; gap: 8px; margin-bottom: 12px; }
+.fluide-btn {
+  flex: 1; padding: 10px 6px;
+  border: 2px solid var(--border); border-radius: 10px;
+  background: white; font-weight: 700;
+  font-family: 'DM Sans', sans-serif; font-size: 13px;
+  text-align: center; cursor: pointer; transition: all 0.2s; color: var(--muted);
+}
+.fluide-btn.active-ea  { border-color: var(--water); background: var(--water-bg); color: var(--water); }
+.fluide-btn.active-bt  { border-color: var(--elec);  background: var(--elec-bg);  color: var(--elec); }
+.fluide-btn.active-tous { border-color: var(--sky);  background: var(--sky-light); color: var(--sky-dark); }
+
+/* ── RADIO GROUP ── */
+.radio-group { display: flex; gap: 10px; flex-wrap: wrap; }
+.radio-label {
+  display: flex; align-items: center; gap: 7px;
+  font-size: 14px; font-weight: 600; cursor: pointer;
+  padding: 9px 14px;
+  border: 2px solid var(--border); border-radius: 10px;
+  flex: 1; justify-content: center; transition: all 0.2s; min-width: 80px;
+}
+.radio-label input { width: 16px; height: 16px; accent-color: var(--sky); }
+.radio-label:has(input:checked) { border-color: var(--sky); background: var(--sky-light); color: var(--sky-dark); }
+
+/* ── RESULT ITEMS ── */
+.result-item {
+  background: #f7fafd; border: 2px solid var(--border);
+  padding: 13px; border-radius: 10px; margin-bottom: 8px;
+  cursor: pointer; transition: all 0.15s;
+}
+.result-item:active { background: var(--sky-light); border-color: var(--sky); }
+.result-title {
+  font-weight: 700; font-size: 14px; color: var(--ink);
+  margin-bottom: 4px;
+  display: flex; justify-content: space-between; align-items: center; gap: 8px;
+}
+.result-desc { font-size: 12px; color: var(--muted); line-height: 1.6; }
+.badge-fluide {
+  font-size: 10px; padding: 3px 7px; border-radius: 6px;
+  font-weight: 800; letter-spacing: 0.3px; flex-shrink: 0;
+}
+.bg-water { background: var(--water); color: white; }
+.bg-power { background: var(--elec); color: white; }
+
+/* ── BUTTONS ── */
+.btn {
+  width: 100%; padding: 13px;
+  border: none; border-radius: 10px;
+  font-size: 14px; font-weight: 700;
+  font-family: 'DM Sans', sans-serif;
+  cursor: pointer; transition: all 0.15s;
+  display: flex; justify-content: center; align-items: center;
+  gap: 7px; letter-spacing: 0.2px;
+}
+.btn + .btn { margin-top: 8px; }
+.btn:active { transform: scale(0.98); }
+.btn-primary  { background: var(--sky);  color: white; box-shadow: 0 3px 10px rgba(26,115,232,0.25); }
+.btn-primary:active  { background: var(--sky-dark); }
+.btn-secondary { background: var(--green); color: white; box-shadow: 0 3px 10px rgba(27,115,64,0.2); }
+.btn-secondary:active { background: #145530; }
+.btn-gold     { background: var(--gold); color: var(--ink); box-shadow: 0 3px 10px rgba(249,168,37,0.3); }
+.btn-gold:active { background: var(--gold-dark); color: white; }
+.btn-outline  { background: white; border: 2px solid var(--border); color: var(--muted); }
+.btn-danger   { background: var(--red-bg); border: 2px solid var(--red); color: var(--red); }
+.btn-warning  { background: var(--elec-bg); border: 2px solid var(--elec); color: var(--orange); }
+
+/* ── INFO BLOCK ── */
+.info-block {
+  background: var(--sky-light); border-left: 4px solid var(--sky);
+  padding: 13px; border-radius: 0 10px 10px 0;
+  margin-bottom: 14px; font-size: 13px; line-height: 1.6; display: none;
+}
+
+/* ── PHOTO UPLOAD ── */
+.photo-upload {
+  border: 2.5px dashed var(--border); border-radius: 10px;
+  padding: 20px; text-align: center; color: var(--muted);
+  position: relative; cursor: pointer; background: #f7fafd; transition: all 0.2s;
+}
+.photo-upload:active { border-color: var(--sky); background: var(--sky-light); }
+.photo-upload input[type="file"] {
+  position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+}
+.photo-upload-icon { font-size: 32px; margin-bottom: 6px; }
+.photo-upload-text { font-size: 13px; font-weight: 600; }
+.photo-preview {
+  width: 100%; max-height: 180px; object-fit: contain;
+  margin-top: 10px; border-radius: 8px; display: none; border: 2px solid var(--border);
+}
+
+/* ── PROGRESS ── */
+.progress-container { display: none; margin-top: 14px; }
+.progress-bar { width: 100%; height: 8px; background: var(--bg); border-radius: 4px; overflow: hidden; margin-bottom: 6px; }
+.progress-fill { height: 100%; background: linear-gradient(90deg, var(--sky), var(--green)); width: 0%; transition: width 0.2s; border-radius: 4px; }
+.progress-text { font-size: 12px; color: var(--muted); text-align: center; font-weight: 700; }
+
+/* ── HISTORY ITEMS ── */
+.history-item {
+  border: 2px solid var(--border); border-radius: var(--radius);
+  padding: 14px; margin-bottom: 12px; background: white;
+}
+.hi-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; gap: 8px; }
+.hi-serie { font-family: 'Bebas Neue', sans-serif; font-weight: 400; font-size: 20px; color: var(--ink); letter-spacing: 0.5px; }
+.hi-details { font-size: 13px; margin-bottom: 10px; color: var(--text); line-height: 1.7; }
+.hi-actions { display: flex; gap: 8px; border-top: 1px solid var(--bg); padding-top: 10px; }
+.badge { padding: 3px 9px; border-radius: 6px; font-size: 10px; font-weight: 800; letter-spacing: 0.3px; text-transform: uppercase; }
+.badge-pending { background: var(--gold-bg); color: var(--gold-dark); border: 1px solid var(--gold); }
+.badge-ok      { background: var(--green-bg); color: var(--green);    border: 1px solid var(--green); }
+
+/* ── EXPORT BANNER ── */
+.export-banner {
+  background: linear-gradient(135deg, var(--ink) 0%, var(--ink2) 100%);
+  border-radius: var(--radius);
+  padding: 18px; margin-bottom: 14px; color: white;
+}
+.export-banner-title {
+  font-family: 'Bebas Neue', sans-serif; font-size: 18px; letter-spacing: 0.8px;
+  margin-bottom: 5px; color: var(--gold);
+}
+.export-banner-desc { font-size: 12px; color: rgba(255,255,255,0.65); line-height: 1.5; margin-bottom: 14px; }
+.export-btn-row { display: flex; flex-direction: column; gap: 8px; }
+
+/* ── DB GRID ── */
+.db-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+.db-upload-card {
+  border: 2.5px dashed var(--border); border-radius: var(--radius);
+  padding: 18px 10px; text-align: center; color: var(--muted);
+  position: relative; cursor: pointer; background: #f7fafd; transition: all 0.2s;
+}
+.db-upload-card input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+.db-upload-card.water { border-color: var(--water); }
+.db-upload-card.water:active { background: var(--water-bg); }
+.db-upload-card.elec  { border-color: var(--elec); }
+.db-upload-card.elec:active  { background: var(--elec-bg); }
+.db-upload-icon { font-size: 28px; margin-bottom: 5px; }
+.db-upload-label { font-size: 12px; font-weight: 700; }
+.db-upload-label.water { color: var(--water); }
+.db-upload-label.elec  { color: var(--elec); }
+.db-status-row { font-size: 11px; color: var(--muted); margin-top: 4px; font-weight: 600; }
+.db-status-row.loaded { color: var(--green); }
+
+/* ── GPS STATUS ── */
+.gps-row {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  font-size: 12px; color: var(--muted); font-weight: 600;
+  margin-bottom: 12px; padding: 7px;
+  background: var(--bg); border-radius: 8px;
+}
+
+/* ── MODAL ── */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(15,25,35,0.6);
+  backdrop-filter: blur(3px);
+  z-index: 200; display: none; justify-content: center; align-items: center;
+  padding: 16px;
+}
+.modal-overlay.active { display: flex; }
+.modal {
+  background: white; width: 100%; max-width: 440px;
+  border-radius: 16px; padding: 24px; box-shadow: var(--shadow-lg);
+  max-height: 90vh; overflow-y: auto;
+}
+.modal-title {
+  font-family: 'Bebas Neue', sans-serif; font-size: 22px; letter-spacing: 0.8px;
+  color: var(--ink); margin-bottom: 5px;
+}
+.modal-sub { font-size: 13px; color: var(--muted); margin-bottom: 18px; line-height: 1.5; }
+.modal-actions { display: flex; gap: 10px; margin-top: 18px; }
+.modal-actions .btn { flex: 1; }
+
+/* ── SECTION NOTE ── */
+.section-note {
+  font-size: 12px; color: var(--muted); line-height: 1.5;
+  padding: 9px 13px; background: var(--bg); border-radius: 8px; margin-bottom: 12px;
+}
+.mt-4 { margin-top: 12px; }
+.text-center { text-align: center; color: var(--muted); padding: 20px 0; font-weight: 600; }
+.two-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+/* ── SETUP WIZARD ── */
+.wizard-overlay {
+  position: fixed; inset: 0;
+  background: var(--bg);
+  z-index: 300;
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+}
+.wizard-card {
+  background: white; border-radius: 20px;
+  padding: 28px 24px; width: 100%; max-width: 440px;
+  box-shadow: var(--shadow-lg); border: 1px solid var(--border);
+  max-height: 90vh; overflow-y: auto;
+}
+.wizard-logo {
+  text-align: center; margin-bottom: 20px;
+}
+.wizard-logo-icon {
+  width: 64px; height: 64px; background: var(--ink); border-radius: 16px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 32px; margin: 0 auto 10px;
+}
+.wizard-logo-title {
+  font-family: 'Bebas Neue', sans-serif; font-size: 28px;
+  letter-spacing: 1px; color: var(--ink);
+}
+.wizard-logo-sub { font-size: 13px; color: var(--muted); }
+.wizard-section-title {
+  font-family: 'Bebas Neue', sans-serif; font-size: 16px;
+  letter-spacing: 0.6px; color: var(--sky); margin-bottom: 14px; margin-top: 6px;
+}
+
+/* ── EXPORT PROGRESS ── */
+.export-progress-bar {
+  width: 100%; height: 8px; background: var(--bg); border-radius: 4px;
+  overflow: hidden; margin: 10px 0 6px;
+}
+.export-progress-fill {
+  height: 100%; background: linear-gradient(90deg, var(--gold), var(--green));
+  width: 0%; transition: width 0.3s; border-radius: 4px;
+}
+.export-status { font-size: 12px; color: var(--muted); text-align: center; font-weight: 700; }
+
+/* ── ABSENT BADGE ── */
+.badge-absent { background: #fff3e0; color: var(--orange); border: 1px solid var(--elec); }
+
+/* DIVIDER */
+.section-div {
+  height: 2px; background: var(--bg); border-radius: 1px; margin: 14px 0;
+}
+
+/* CHIP */
+.chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 9px; border-radius: 20px;
+  font-size: 11px; font-weight: 700;
+}
+.chip-water { background: var(--water-bg); color: var(--water); border: 1px solid var(--water); }
+.chip-elec  { background: var(--elec-bg);  color: var(--orange); border: 1px solid var(--elec); }
+</style>
+</head>
+<body>
+
+<!-- ===== SETUP WIZARD ===== -->
+<div class="wizard-overlay" id="wizardOverlay">
+  <div class="wizard-card">
+    <div class="wizard-logo">
+      <div class="wizard-logo-icon">📡</div>
+      <div class="wizard-logo-title">Contrôle Bout de Ligne</div>
+      <div class="wizard-logo-sub">BE-ASP — Configuration de la session</div>
+    </div>
+
+    <div class="wizard-section-title">🏢 Agence</div>
+    <div class="form-group">
+      <label>Code / Nom de l'agence</label>
+      <input type="text" id="w_agence" placeholder="Ex : ASP SIDI KACEM">
+    </div>
+
+    <div class="section-div"></div>
+
+    <div class="wizard-section-title">👤 Agent Principal</div>
+    <div class="form-group">
+      <label>Matricule de l'agent</label>
+      <input type="text" id="w_mat1" placeholder="Mle">
+    </div>
+    <div class="form-group">
+      <label>Nom & Prénom</label>
+      <input type="text" id="w_nom1" placeholder="Votre nom et prénom>
+    </div>
+
+    <div class="section-div"></div>
+
+    <div class="wizard-section-title">👥 Accompagnateur</div>
+    <div class="form-group">
+      <label>Y a-t-il un agent accompagnateur ?</label>
+      <div class="radio-group">
+        <label class="radio-label"><input type="radio" name="w_has_companion" value="oui" onchange="toggleCompanion(true)"> 👥 Oui</label>
+        <label class="radio-label"><input type="radio" name="w_has_companion" value="non" checked onchange="toggleCompanion(false)"> 👤 Seul</label>
+      </div>
+    </div>
+    <div id="companionFields" style="display:none;">
+      <div class="form-group">
+        <label>Matricule de l'accompagnateur</label>
+        <input type="text" id="w_mat2" placeholder="Mle">
+      </div>
+      <div class="form-group">
+        <label>Nom & Prénom de l'accompagnateur</label>
+        <input type="text" id="w_nom2" placeholder="Le nom du deuxieme agent">
+      </div>
+    </div>
+
+    <button class="btn btn-primary" style="margin-top: 8px;" onclick="saveWizard()">
+      ✅ Démarrer la Session
+    </button>
+  </div>
+</div>
+
+<!-- ===== HEADER ===== -->
+<header>
+  <div class="header-brand">
+    <div class="header-icon">📡</div>
+    <div>
+      <div class="header-title">Bout de Ligne</div>
+      <div class="header-sub">Contrôle de terrain</div>
+    </div>
+  </div>
+  <div class="db-pill">
+    <div class="db-dot"></div>
+    <span id="dbCount">0 entrées</span>
+  </div>
+</header>
+
+<main>
+  <!-- ===== TAB SAISIE ===== -->
+  <div id="tab-saisie" class="tab-content active">
+
+    <!-- Agent Banner -->
+    <div class="agent-banner" onclick="openWizardEdit()">
+      <div class="agent-banner-icon">🏢</div>
+      <div class="agent-banner-info">
+        <div class="agent-banner-title" id="bannerAgence">—</div>
+        <div class="agent-banner-sub" id="bannerAgents">—</div>
+      </div>
+      <div class="agent-banner-edit">✏️ Modifier</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">
+        <span><span class="card-step">1</span>Recherche Compteur</span>
+      </div>
+
+      <div class="form-group">
+        <label>Type de fluide</label>
+        <div class="fluide-selector">
+          <div class="fluide-btn active-tous" id="btn_tous" onclick="setSearchFluide('Tous')">Tous</div>
+          <div class="fluide-btn" id="btn_ea" onclick="setSearchFluide('EA')">💧 Eau</div>
+          <div class="fluide-btn" id="btn_bt" onclick="setSearchFluide('BT')">⚡ Élec</div>
+        </div>
+        <input type="hidden" id="search_fluide_val" value="Tous">
+      </div>
+
+      <div class="form-group">
+        <label>Recherche par N° de Série</label>
+        <div class="search-row">
+          <select id="search_type" style="flex: 1; min-width: 110px;">
+            <option value="contains">Contient</option>
+            <option value="ends">Finit par</option>
+            <option value="starts">Commence par</option>
+            <option value="exact">Exactement</option>
+          </select>
+          <input type="text" id="in_serie_search" placeholder="N° partiel..." style="flex: 2;">
+        </div>
+        <button class="btn-search" onclick="searchCompteur()">🔍 Rechercher</button>
+      </div>
+
+      <div id="searchResults" style="margin-top: 12px;"></div>
+      <div class="info-block" id="infoAuto"></div>
+    </div>
+
+    <div class="card" id="cardReleve" style="display:none;">
+      <div class="card-title">
+        <span><span class="card-step">2</span>Données Terrain</span>
+      </div>
+
+      <input type="hidden" id="in_serie_valide">
+      <input type="hidden" id="in_fluide_valide">
+
+      <div class="two-cols">
+        <div class="form-group">
+          <label>N° Contrat</label>
+          <input type="text" id="in_contrat" placeholder="Ex : 123456">
+        </div>
+        <div class="form-group">
+          <label>Index Terrain</label>
+          <input type="number" id="in_index" placeholder="Ex : 14502">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Facture remise au client ?</label>
+        <div class="radio-group">
+          <label class="radio-label"><input type="radio" name="remise_facture" value="Oui" checked> ✅ Oui</label>
+          <label class="radio-label"><input type="radio" name="remise_facture" value="Non"> ❌ Non</label>
+          <label class="radio-label"><input type="radio" name="remise_facture" value="Absent"> 🚪 Absent</label>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Remarques / Anomalies <span style="font-weight:400; text-transform:none;">(Optionnel)</span></label>
+        <input type="text" id="in_remarque" placeholder="Ex : Compteur bloqué, illisible...">
+      </div>
+
+      <div class="form-group">
+        <label>Preuve Photographique</label>
+        <div class="photo-upload">
+          <input type="file" id="in_photo" accept="image/*" capture="environment" onchange="previewPhoto(event)">
+          <div class="photo-upload-icon">📷</div>
+          <div class="photo-upload-text">Appuyer pour prendre une photo</div>
+          <img id="photo_preview" class="photo-preview">
+        </div>
+      </div>
+
+      <div class="gps-row" id="gps_status">📍 Position GPS sera capturée à l'enregistrement</div>
+
+      <button class="btn btn-primary" onclick="saveVisite()">💾 Enregistrer la visite</button>
+      <button class="btn btn-outline" onclick="resetForm()">✕ Annuler la sélection</button>
+    </div>
+  </div>
+
+  <!-- ===== TAB HISTORIQUE ===== -->
+  <div id="tab-history" class="tab-content">
+    <div class="export-banner">
+      <div class="export-banner-title">🚀 Export Rapport Complet</div>
+      <div class="export-banner-desc">
+        Génère un fichier ZIP contenant le rapport Word officiel, le fichier Excel (3 feuilles) et le dossier Photos.
+      </div>
+      <div id="exportProgressContainer" style="display:none;">
+        <div class="export-progress-bar"><div id="exportProgressFill" class="export-progress-fill"></div></div>
+        <div id="exportStatus" class="export-status">Préparation…</div>
+      </div>
+      <div class="export-btn-row" style="margin-top:12px;">
+        <button class="btn btn-gold" onclick="exportExcelZIP()">📊 Excel + Photos (ZIP)</button>
+        <button class="btn btn-secondary" onclick="exportWordReport()">📄 Rapport Word Officiel</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">
+        <span>🗂️ Visites Enregistrées</span>
+        <button class="btn btn-danger" style="width:auto; padding:5px 12px; font-size:12px;" onclick="clearHistory()">🗑️ Vider</button>
+      </div>
+      <div id="historyList"></div>
+    </div>
+  </div>
+
+  <!-- ===== TAB DB ===== -->
+  <div id="tab-db" class="tab-content">
+    <div class="card">
+      <div class="card-title">⚙️ Bases de Données</div>
+      <div class="section-note">
+        Privilégiez le format CSV pour les bases de plus de 50 000 lignes. Les deux bases (Eau et Électricité) sont indépendantes.
+      </div>
+
+      <div class="db-grid">
+        <div class="db-upload-card water">
+          <input type="file" accept=".xlsx,.xls,.csv" onchange="loadExcelDB(event, 'EA')">
+          <div class="db-upload-icon">💧</div>
+          <div class="db-upload-label water">Charger EA (Eau)</div>
+          <div class="db-status-row" id="status_EA">Non chargé</div>
+        </div>
+        <div class="db-upload-card elec">
+          <input type="file" accept=".xlsx,.xls,.csv" onchange="loadExcelDB(event, 'BT')">
+          <div class="db-upload-icon">⚡</div>
+          <div class="db-upload-label elec">Charger BT (Élec)</div>
+          <div class="db-status-row" id="status_BT">Non chargé</div>
+        </div>
+      </div>
+
+      <div id="progressContainer" class="progress-container">
+        <div class="progress-bar"><div id="progressFill" class="progress-fill"></div></div>
+        <div id="progressText" class="progress-text">Traitement : 0%</div>
+      </div>
+
+      <button class="btn btn-danger mt-4" onclick="clearDB()">🗑️ Vider les bases de données</button>
+    </div>
+  </div>
+</main>
+
+<!-- ===== MODAL SYSTÈME ===== -->
+<div class="modal-overlay" id="sysModal">
+  <div class="modal">
+    <div class="modal-title">✏️ Vérification Système</div>
+    <div class="modal-sub">Saisissez l'index validé et la date de saisie retour au bureau.</div>
+    <input type="hidden" id="sys_id">
+    <div class="form-group">
+      <label>Index validé sur Système</label>
+      <input type="number" id="sys_index" placeholder="Ex : 14502">
+    </div>
+    <div class="form-group">
+      <label>Date exacte de la saisie système</label>
+      <input type="date" id="sys_date" style="border-color: var(--green);">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('sysModal')">Annuler</button>
+      <button class="btn btn-primary" onclick="saveSystemData()">Confirmer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MODAL ÉDITION VISITE ===== -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal">
+    <div class="modal-title">✏️ Modifier la Visite</div>
+    <div class="modal-sub" id="editModalSub">Modification des données enregistrées.</div>
+    <input type="hidden" id="edit_id">
+    <div class="two-cols">
+      <div class="form-group">
+        <label>N° Contrat</label>
+        <input type="text" id="edit_contrat" placeholder="Ex : 123456">
+      </div>
+      <div class="form-group">
+        <label>Index Terrain</label>
+        <input type="number" id="edit_index" placeholder="Ex : 14502">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Facture remise au client ?</label>
+      <div class="radio-group">
+        <label class="radio-label"><input type="radio" name="edit_remise" value="Oui"> ✅ Oui</label>
+        <label class="radio-label"><input type="radio" name="edit_remise" value="Non"> ❌ Non</label>
+        <label class="radio-label"><input type="radio" name="edit_remise" value="Absent"> 🚪 Absent</label>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Remarques / Anomalies</label>
+      <input type="text" id="edit_remarque" placeholder="Ex : Compteur bloqué...">
+    </div>
+    <div class="form-group">
+      <label>Index validé Système (si disponible)</label>
+      <input type="number" id="edit_sys_index" placeholder="Ex : 14502">
+    </div>
+    <div class="form-group">
+      <label>Date saisie système</label>
+      <input type="date" id="edit_sys_date" style="border-color: var(--green);">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModal('editModal')">Annuler</button>
+      <button class="btn btn-primary" onclick="saveEditVisite()">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<nav class="bottom-nav">
+  <div class="nav-item active" onclick="switchTab('saisie', this)">
+    <div class="nav-icon">📍</div><span>Terrain</span>
+  </div>
+  <div class="nav-item" onclick="switchTab('history', this)">
+    <div class="nav-icon">📋</div><span>Vérif.</span>
+  </div>
+  <div class="nav-item" onclick="switchTab('db', this)">
+    <div class="nav-icon">⚙️</div><span>Base</span>
+  </div>
+</nav>
+
+<script>
+// ==========================================
+// STATE
+// ==========================================
+let db;
+let currentAutoData = null;
+let compressedPhotoData = null;
+window.searchResultsMap = {};
+
+// Session info
+let sessionInfo = null;
+
+document.addEventListener("DOMContentLoaded", () => {
+  initIndexedDB();
+  document.getElementById('sys_date').valueAsDate = new Date();
+
+  // Load session
+  const stored = localStorage.getItem('cbl_session');
+  if (stored) {
+    try {
+      sessionInfo = JSON.parse(stored);
+      updateBanner();
+      document.getElementById('wizardOverlay').style.display = 'none';
+    } catch(e) {
+      document.getElementById('wizardOverlay').style.display = 'flex';
+    }
+  } else {
+    document.getElementById('wizardOverlay').style.display = 'flex';
+  }
+});
+
+// ==========================================
+// WIZARD
+// ==========================================
+function toggleCompanion(show) {
+  document.getElementById('companionFields').style.display = show ? 'block' : 'none';
+}
+
+function saveWizard() {
+  const agence = document.getElementById('w_agence').value.trim();
+  const mat1   = document.getElementById('w_mat1').value.trim();
+  const nom1   = document.getElementById('w_nom1').value.trim();
+  const hasComp = document.querySelector('input[name="w_has_companion"]:checked').value === 'oui';
+  const mat2   = document.getElementById('w_mat2').value.trim();
+  const nom2   = document.getElementById('w_nom2').value.trim();
+
+  if (!agence || !nom1) {
+    alert("Veuillez renseigner l'agence et le nom de l'agent principal.");
+    return;
+  }
+  if (hasComp && !nom2) {
+    alert("Veuillez renseigner le nom de l'accompagnateur.");
+    return;
+  }
+
+  sessionInfo = {
+    agence, mat1, nom1,
+    hasComp,
+    mat2: hasComp ? mat2 : '',
+    nom2: hasComp ? nom2 : ''
+  };
+  localStorage.setItem('cbl_session', JSON.stringify(sessionInfo));
+  updateBanner();
+  document.getElementById('wizardOverlay').style.display = 'none';
+}
+
+function openWizardEdit() {
+  if (sessionInfo) {
+    document.getElementById('w_agence').value = sessionInfo.agence || '';
+    document.getElementById('w_mat1').value   = sessionInfo.mat1   || '';
+    document.getElementById('w_nom1').value   = sessionInfo.nom1   || '';
+    if (sessionInfo.hasComp) {
+      document.querySelector('input[name="w_has_companion"][value="oui"]').checked = true;
+      toggleCompanion(true);
+      document.getElementById('w_mat2').value = sessionInfo.mat2 || '';
+      document.getElementById('w_nom2').value = sessionInfo.nom2 || '';
+    } else {
+      document.querySelector('input[name="w_has_companion"][value="non"]').checked = true;
+      toggleCompanion(false);
+    }
+  }
+  document.getElementById('wizardOverlay').style.display = 'flex';
+}
+
+function updateBanner() {
+  if (!sessionInfo) return;
+  document.getElementById('bannerAgence').textContent = sessionInfo.agence || '—';
+  let agents = sessionInfo.nom1 || '—';
+  if (sessionInfo.hasComp && sessionInfo.nom2) agents += ' + ' + sessionInfo.nom2;
+  document.getElementById('bannerAgents').textContent = '👤 ' + agents;
+}
+
+// ==========================================
+// TABS
+// ==========================================
+function switchTab(tabId, el) {
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('tab-' + tabId).classList.add('active');
+  el.classList.add('active');
+  if (tabId === 'history') loadHistory();
+}
+
+function setSearchFluide(val) {
+  document.getElementById('search_fluide_val').value = val;
+  document.getElementById('btn_tous').className = "fluide-btn" + (val === 'Tous' ? " active-tous" : "");
+  document.getElementById('btn_ea').className   = "fluide-btn" + (val === 'EA'   ? " active-ea"  : "");
+  document.getElementById('btn_bt').className   = "fluide-btn" + (val === 'BT'   ? " active-bt"  : "");
+}
+
+// ==========================================
+// INDEXED DB
+// ==========================================
+function initIndexedDB() {
+  const request = indexedDB.open("BoutDeLigneDB", 3);
+  request.onupgradeneeded = (event) => {
+    db = event.target.result;
+    if (!db.objectStoreNames.contains("contrats")) db.createObjectStore("contrats", { keyPath: "cle_unique" });
+    if (!db.objectStoreNames.contains("visites"))  db.createObjectStore("visites",  { keyPath: "id" });
+  };
+  request.onsuccess = (event) => {
+    db = event.target.result;
+    updateDBCount();
+    updateDBStatus();
+  };
+}
+
+function updateDBCount() {
+  const request = db.transaction(["contrats"], "readonly").objectStore("contrats").count();
+  request.onsuccess = () => {
+    document.getElementById('dbCount').textContent = request.result.toLocaleString('fr-FR') + ' entrées';
+  };
+}
+
+function updateDBStatus() {
+  // Count EA and BT separately
+  const store = db.transaction(["contrats"], "readonly").objectStore("contrats");
+  store.getAll().onsuccess = (e) => {
+    const all = e.target.result;
+    const ea  = all.filter(r => r.type_fluide === 'EA').length;
+    const bt  = all.filter(r => r.type_fluide === 'BT').length;
+    const elEA = document.getElementById('status_EA');
+    const elBT = document.getElementById('status_BT');
+    if (ea > 0) { elEA.textContent = ea.toLocaleString('fr-FR') + ' cpt.'; elEA.className = 'db-status-row loaded'; }
+    else        { elEA.textContent = 'Non chargé'; elEA.className = 'db-status-row'; }
+    if (bt > 0) { elBT.textContent = bt.toLocaleString('fr-FR') + ' cpt.'; elBT.className = 'db-status-row loaded'; }
+    else        { elBT.textContent = 'Non chargé'; elBT.className = 'db-status-row'; }
+  };
+}
+
+function clearDB() {
+  if (!confirm("⚠️ Êtes-vous sûr de vouloir effacer les bases de données (Eau et Électricité) ?\n\nL'historique des visites ne sera pas impacté.")) return;
+  const t = db.transaction(["contrats"], "readwrite");
+  t.objectStore("contrats").clear();
+  t.oncomplete = () => { alert("Bases vidées."); updateDBCount(); updateDBStatus(); };
+}
+
+function clearHistory() {
+  if (!confirm("⚠️ Êtes-vous sûr de vouloir supprimer TOUTES les visites ?\n\nCette action est irréversible.")) return;
+  const t = db.transaction(["visites"], "readwrite");
+  t.objectStore("visites").clear();
+  t.oncomplete = () => { alert("Historique vidé."); loadHistory(); };
+}
+
+function deleteVisite(id) {
+  if (!confirm("Voulez-vous vraiment supprimer cette visite ?")) return;
+  const t = db.transaction(["visites"], "readwrite");
+  t.objectStore("visites").delete(id);
+  t.oncomplete = () => { loadHistory(); };
+}
+
+// ==========================================
+// IMPORT DB
+// ==========================================
+function loadExcelDB(event, typeFluide) {
+  const file = event.target.files[0];
+  if (!file) return;
+  document.getElementById('progressContainer').style.display = 'block';
+  document.getElementById('progressFill').style.width = '0%';
+  document.getElementById('progressText').textContent = `Lecture du fichier ${typeFluide}…`;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    document.getElementById('progressText').textContent = "Conversion des données…";
+    setTimeout(() => {
+      const data = new Uint8Array(e.target.result);
+      const workbook = XLSX.read(data, { type: 'array' });
+      const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { defval: "" });
+      processInBatches(jsonData, typeFluide);
+    }, 100);
+  };
+  reader.readAsArrayBuffer(file);
+  event.target.value = '';
+}
+
+function processInBatches(dataList, typeFluide) {
+  let currentIndex = 0;
+  const batchSize = 2500;
+  const total = dataList.length;
+  let validCount = 0;
+  function nextBatch() {
+    const batch = dataList.slice(currentIndex, currentIndex + batchSize);
+    const t = db.transaction(["contrats"], "readwrite");
+    const store = t.objectStore("contrats");
+    batch.forEach(row => {
+      let cleanRow = {};
+      for (let key in row) cleanRow[key.trim()] = row[key];
+      let serie = String(cleanRow["Numero Serie"] || cleanRow["NumeroSerie"] || "").trim();
+      if (serie) {
+        cleanRow["Numero Serie"] = serie;
+        cleanRow["type_fluide"] = typeFluide;
+        cleanRow["cle_unique"] = serie + "_" + typeFluide;
+        store.put(cleanRow);
+        validCount++;
+      }
+    });
+    t.oncomplete = () => {
+      currentIndex += batchSize;
+      let percent = Math.min(100, Math.round((currentIndex / total) * 100));
+      document.getElementById('progressFill').style.width = percent + '%';
+      document.getElementById('progressText').textContent = `Sauvegarde ${typeFluide} : ${percent}% (${Math.min(currentIndex, total)}/${total})`;
+      if (currentIndex < total) { setTimeout(nextBatch, 20); }
+      else {
+        document.getElementById('progressText').textContent = "✅ Terminé !";
+        setTimeout(() => {
+          document.getElementById('progressContainer').style.display = 'none';
+          updateDBCount();
+          updateDBStatus();
+          alert(`${validCount} compteurs (${typeFluide}) chargés avec succès !`);
+        }, 500);
+      }
+    };
+  }
+  nextBatch();
+}
+
+// ==========================================
+// RECHERCHE
+// ==========================================
+function searchCompteur() {
+  const searchValue  = document.getElementById('in_serie_search').value.trim().toLowerCase();
+  const searchType   = document.getElementById('search_type').value;
+  const filterFluide = document.getElementById('search_fluide_val').value;
+  const resultsDiv   = document.getElementById('searchResults');
+  if (!searchValue) { alert("Veuillez saisir une valeur."); return; }
+  resultsDiv.innerHTML = '<div style="text-align:center; padding:10px; color:var(--muted); font-weight:600;">Recherche en cours…</div>';
+  const request = db.transaction(["contrats"], "readonly").objectStore("contrats").openCursor();
+  const results = [];
+  window.searchResultsMap = {};
+  request.onsuccess = (event) => {
+    const cursor = event.target.result;
+    if (cursor) {
+      const data   = cursor.value;
+      const serie  = String(data["Numero Serie"] || "").toLowerCase();
+      const fluide = data.type_fluide;
+      if (filterFluide === 'Tous' || filterFluide === fluide) {
+        let match = false;
+        if      (searchType === 'contains' && serie.includes(searchValue))   match = true;
+        else if (searchType === 'starts'   && serie.startsWith(searchValue)) match = true;
+        else if (searchType === 'ends'     && serie.endsWith(searchValue))   match = true;
+        else if (searchType === 'exact'    && serie === searchValue)         match = true;
+        if (match) { results.push(data); window.searchResultsMap[data.cle_unique] = data; }
+      }
+      if (results.length < 50) cursor.continue();
+      else renderSearchResults(results, searchValue, filterFluide);
+    } else {
+      renderSearchResults(results, searchValue, filterFluide);
+    }
+  };
+}
+
+function renderSearchResults(results, searchValue, filterFluide) {
+  const resultsDiv = document.getElementById('searchResults');
+  if (results.length === 0) {
+    let textForce = filterFluide === 'Tous'
+      ? `<div style="display:flex;gap:8px;margin-top:10px;">
+           <button class="btn btn-outline" style="padding:9px;font-size:13px;" onclick="forceUnknownCompteur('${searchValue}','EA')">Forcer EA 💧</button>
+           <button class="btn btn-outline" style="padding:9px;font-size:13px;" onclick="forceUnknownCompteur('${searchValue}','BT')">Forcer BT ⚡</button>
+         </div>`
+      : `<button class="btn btn-outline" style="padding:9px;font-size:13px;margin-top:10px;" onclick="forceUnknownCompteur('${searchValue}','${filterFluide}')">Forcer comme ${filterFluide}</button>`;
+    resultsDiv.innerHTML = `<div class="info-block" style="display:block; border-left-color:var(--gold);">⚠️ <strong>Aucun résultat trouvé.</strong>${textForce}</div>`;
+    return;
+  }
+  let html = `<p style="font-size:12px;color:var(--muted);margin-bottom:10px;font-weight:700;"><strong>${results.length}</strong> résultat(s) — Sélectionnez :</p>`;
+  results.forEach(r => {
+    const nom     = r["Titulaire"] || r["Nom"] || "N/A";
+    const contrat = r["Num Cta Abt"] || r["Contrat"] || "N/A";
+    const adresse = r["Adresse Liv"] || r["Adresse Postale"] || r["Adresse"] || "";
+    const fluide  = r.type_fluide;
+    const badgeClass = fluide === 'EA' ? 'bg-water' : 'bg-power';
+    const cle = r.cle_unique.replace(/'/g, "\\'");
+    html += `
+      <div class="result-item" onclick="selectCompteur('${cle}')">
+        <div class="result-title">
+          Série : ${r["Numero Serie"]}
+          <span class="badge-fluide ${badgeClass}">${fluide} ${fluide==='EA'?'💧':'⚡'}</span>
+        </div>
+        <div class="result-desc">
+          <strong>Contrat :</strong> ${contrat} &nbsp;|&nbsp; <strong>Client :</strong> ${nom}
+          ${adresse ? '<br>📍 ' + adresse : ''}
+        </div>
+      </div>`;
+  });
+  resultsDiv.innerHTML = html;
+}
+
+function selectCompteur(cle) {
+  currentAutoData = window.searchResultsMap[cle];
+  document.getElementById('in_serie_valide').value  = currentAutoData["Numero Serie"];
+  document.getElementById('in_fluide_valide').value = currentAutoData.type_fluide;
+  // Pre-fill contrat
+  const contrat = currentAutoData["Num Cta Abt"] || currentAutoData["Contrat"] || "";
+  document.getElementById('in_contrat').value = contrat;
+  document.getElementById('searchResults').innerHTML = '';
+  const infoDiv = document.getElementById('infoAuto');
+  infoDiv.style.display = 'block';
+  const isWater = currentAutoData.type_fluide === 'EA';
+  infoDiv.style.borderLeftColor = isWater ? 'var(--water)' : 'var(--elec)';
+  infoDiv.style.background = isWater ? 'var(--water-bg)' : 'var(--elec-bg)';
+  const nom     = currentAutoData["Titulaire"] || currentAutoData["Nom"] || "N/A";
+  const adresse = currentAutoData["Adresse Liv"] || currentAutoData["Adresse Postale"] || currentAutoData["Adresse"] || "N/A";
+  infoDiv.innerHTML = `
+    <div style="font-size:16px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;">
+      <strong>Série : ${currentAutoData["Numero Serie"]}</strong>
+      <span style="font-size:20px;font-weight:800;color:${isWater?'var(--water)':'var(--elec)'};">${currentAutoData.type_fluide} ${isWater?'💧':'⚡'}</span>
+    </div>
+    <strong>Client :</strong> ${nom}<br>
+    <strong>Contrat :</strong> ${contrat}<br>
+    <strong>Adresse :</strong> ${adresse}
+  `;
+  document.getElementById('cardReleve').style.display = 'block';
+}
+
+function forceUnknownCompteur(valeurSaisie, fluide) {
+  currentAutoData = null;
+  document.getElementById('in_serie_valide').value  = valeurSaisie;
+  document.getElementById('in_fluide_valide').value = fluide;
+  document.getElementById('searchResults').innerHTML = '';
+  const infoDiv = document.getElementById('infoAuto');
+  infoDiv.style.display = 'block';
+  infoDiv.style.borderLeftColor = fluide === 'EA' ? 'var(--water)' : 'var(--elec)';
+  infoDiv.style.background = fluide === 'EA' ? 'var(--water-bg)' : 'var(--elec-bg)';
+  infoDiv.innerHTML = `⚠️ <strong>Compteur hors base.</strong> Type forcé : ${fluide} ${fluide==='EA'?'💧':'⚡'}`;
+  document.getElementById('cardReleve').style.display = 'block';
+}
+
+function resetForm() {
+  document.getElementById('in_serie_search').value = '';
+  document.getElementById('in_serie_valide').value = '';
+  document.getElementById('in_fluide_valide').value = '';
+  document.getElementById('in_index').value = '';
+  document.getElementById('in_contrat').value = '';
+  document.getElementById('in_remarque').value = '';
+  document.getElementById('in_photo').value = '';
+  document.getElementById('photo_preview').style.display = 'none';
+  document.getElementById('infoAuto').style.display = 'none';
+  document.getElementById('cardReleve').style.display = 'none';
+  document.getElementById('searchResults').innerHTML = '';
+  compressedPhotoData = null;
+  currentAutoData = null;
+}
+
+function previewPhoto(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    const img = new Image();
+    img.onload = function() {
+      const canvas = document.createElement('canvas');
+      canvas.width  = 800;
+      canvas.height = img.height * (800 / img.width);
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      compressedPhotoData = canvas.toDataURL('image/jpeg', 0.6);
+      document.getElementById('photo_preview').src = compressedPhotoData;
+      document.getElementById('photo_preview').style.display = 'block';
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function saveVisite() {
+  const serie   = document.getElementById('in_serie_valide').value.trim();
+  const fluide  = document.getElementById('in_fluide_valide').value;
+  const index   = document.getElementById('in_index').value.trim();
+  const contrat = document.getElementById('in_contrat').value.trim();
+  const remarque   = document.getElementById('in_remarque').value.trim();
+  const remiseFac  = document.querySelector('input[name="remise_facture"]:checked').value;
+  if (!serie || !index) { alert("Saisissez le numéro de série et l'index terrain."); return; }
+  if (navigator.geolocation) {
+    document.getElementById('gps_status').textContent = "📍 Acquisition GPS en cours…";
+    navigator.geolocation.getCurrentPosition(
+      (pos) => finalizeSaveVisite(serie, fluide, index, contrat, remarque, remiseFac, pos.coords.latitude, pos.coords.longitude),
+      ()    => finalizeSaveVisite(serie, fluide, index, contrat, remarque, remiseFac, "Non autorisé", "Non autorisé"),
+      { enableHighAccuracy: true, timeout: 5000 }
+    );
+  } else {
+    finalizeSaveVisite(serie, fluide, index, contrat, remarque, remiseFac, "Non supporté", "Non supporté");
+  }
+}
+
+function finalizeSaveVisite(serie, fluide, index, contrat, remarque, remiseFac, lat, lng) {
+  const visite = {
+    id: Date.now().toString(),
+    date_visite: new Date().toLocaleDateString('fr-FR'),
+    numero_serie: serie,
+    type_fluide: fluide,
+    index_terrain: index,
+    contrat: contrat || (currentAutoData ? (currentAutoData["Num Cta Abt"] || currentAutoData["Contrat"] || "") : ""),
+    remise_facture: remiseFac,
+    remarque: remarque,
+    photo: compressedPhotoData,
+    gps_lat: lat,
+    gps_lng: lng,
+    index_systeme: "",
+    date_saisie_systeme: "",
+    nom: currentAutoData ? (currentAutoData["Titulaire"] || currentAutoData["Nom"] || "") : ""
+  };
+  const t = db.transaction(["visites"], "readwrite");
+  t.objectStore("visites").add(visite);
+  t.oncomplete = () => {
+    alert("✅ Visite enregistrée avec succès !");
+    document.getElementById('gps_status').textContent = "📍 Position GPS sera capturée à l'enregistrement";
+    resetForm();
+  };
+}
+
+// ==========================================
+// HISTORIQUE
+// ==========================================
+function loadHistory() {
+  const request = db.transaction(["visites"], "readonly").objectStore("visites").getAll();
+  request.onsuccess = () => {
+    const visites = request.result.reverse();
+    const listDiv = document.getElementById('historyList');
+    listDiv.innerHTML = '';
+    if (visites.length === 0) { listDiv.innerHTML = '<p class="text-center">Aucune visite enregistrée.</p>'; return; }
+    visites.forEach(v => {
+      const badgeSys  = v.index_systeme
+        ? `<span class="badge badge-ok">✔ Sys: ${v.index_systeme}</span>`
+        : `<span class="badge badge-pending">En attente</span>`;
+      const iconFluide = v.type_fluide === 'EA' ? '💧' : '⚡';
+      const dateSysHTML = v.date_saisie_systeme ? `<br><span style="color:var(--green);">✔ Saisie sys. : <strong>${v.date_saisie_systeme}</strong></span>` : '';
+      let remiseBadge = '';
+      if (v.remise_facture === 'Absent') remiseBadge = `<span class="badge badge-absent" style="margin-left:6px;">🚪 Absent</span>`;
+      listDiv.innerHTML += `
+        <div class="history-item">
+          <div class="hi-header">
+            <span class="hi-serie">${iconFluide} ${v.numero_serie}</span>
+            ${badgeSys}
+          </div>
+          <div class="hi-details">
+            Contrat : <strong>${v.contrat || '—'}</strong><br>
+            Index Terrain : <strong>${v.index_terrain}</strong><br>
+            Facture remise : <strong>${v.remise_facture}</strong>${remiseBadge}
+            ${dateSysHTML}
+            ${v.remarque ? '<br>📝 ' + v.remarque : ''}
+          </div>
+          <div class="hi-actions">
+            <button class="btn btn-warning" style="padding:7px;font-size:12px;flex:1;" onclick="openEditModal('${v.id}')">✏️ Modifier</button>
+            <button class="btn btn-outline"  style="padding:7px;font-size:12px;flex:1;" onclick="openModal('${v.id}','${v.index_systeme}','${v.date_saisie_systeme}')">🖥️ Système</button>
+            <button class="btn btn-danger"   style="padding:7px;font-size:12px;flex:0 0 40px;" onclick="deleteVisite('${v.id}')" title="Supprimer">🗑️</button>
+          </div>
+        </div>`;
+    });
+  };
+}
+
+function openModal(id, idxSys, dateSys) {
+  document.getElementById('sys_id').value = id;
+  document.getElementById('sys_index').value = idxSys || '';
+  if (dateSys) {
+    const parts = dateSys.split('/');
+    if (parts.length === 3) document.getElementById('sys_date').value = `${parts[2]}-${parts[1]}-${parts[0]}`;
+  } else {
+    document.getElementById('sys_date').valueAsDate = new Date();
+  }
+  document.getElementById('sysModal').classList.add('active');
+}
+
+function closeModal(modalId) {
+  document.getElementById(modalId).classList.remove('active');
+}
+
+function saveSystemData() {
+  const id       = document.getElementById('sys_id').value;
+  const idxSys   = document.getElementById('sys_index').value;
+  const dateSysInput = document.getElementById('sys_date').value;
+  if (idxSys && !dateSysInput) { alert("Veuillez confirmer la date de saisie système."); return; }
+  const store = db.transaction(["visites"], "readwrite").objectStore("visites");
+  store.get(id).onsuccess = (e) => {
+    const visite = e.target.result;
+    visite.index_systeme = idxSys;
+    if (dateSysInput) {
+      const d = new Date(dateSysInput);
+      visite.date_saisie_systeme = d.toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit', year:'numeric' });
+    } else {
+      visite.date_saisie_systeme = "";
+    }
+    store.put(visite);
+  };
+  closeModal('sysModal');
+  setTimeout(() => loadHistory(), 200);
+}
+
+// ==========================================
+// EDIT VISITE
+// ==========================================
+function openEditModal(id) {
+  const store = db.transaction(["visites"], "readonly").objectStore("visites");
+  store.get(id).onsuccess = (e) => {
+    const v = e.target.result;
+    document.getElementById('edit_id').value       = v.id;
+    document.getElementById('edit_contrat').value  = v.contrat || '';
+    document.getElementById('edit_index').value    = v.index_terrain || '';
+    document.getElementById('edit_remarque').value = v.remarque || '';
+    document.getElementById('edit_sys_index').value = v.index_systeme || '';
+    if (v.date_saisie_systeme) {
+      const parts = v.date_saisie_systeme.split('/');
+      if (parts.length === 3) document.getElementById('edit_sys_date').value = `${parts[2]}-${parts[1]}-${parts[0]}`;
+    } else {
+      document.getElementById('edit_sys_date').value = '';
+    }
+    // Radio
+    const radioVal = v.remise_facture || 'Oui';
+    const radio = document.querySelector(`input[name="edit_remise"][value="${radioVal}"]`);
+    if (radio) radio.checked = true;
+    document.getElementById('editModalSub').textContent =
+      `Compteur ${v.numero_serie} — ${v.type_fluide} — ${v.date_visite}`;
+    document.getElementById('editModal').classList.add('active');
+  };
+}
+
+function saveEditVisite() {
+  const id       = document.getElementById('edit_id').value;
+  const contrat  = document.getElementById('edit_contrat').value.trim();
+  const index    = document.getElementById('edit_index').value.trim();
+  const remarque = document.getElementById('edit_remarque').value.trim();
+  const remise   = document.querySelector('input[name="edit_remise"]:checked')?.value || 'Oui';
+  const sysIdx   = document.getElementById('edit_sys_index').value.trim();
+  const sysDateInput = document.getElementById('edit_sys_date').value;
+  const store = db.transaction(["visites"], "readwrite").objectStore("visites");
+  store.get(id).onsuccess = (e) => {
+    const v = e.target.result;
+    v.contrat        = contrat;
+    v.index_terrain  = index;
+    v.remarque       = remarque;
+    v.remise_facture = remise;
+    v.index_systeme  = sysIdx;
+    if (sysDateInput) {
+      const d = new Date(sysDateInput);
+      v.date_saisie_systeme = d.toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit', year:'numeric' });
+    } else {
+      v.date_saisie_systeme = "";
+    }
+    store.put(v).onsuccess = () => {
+      closeModal('editModal');
+      loadHistory();
+    };
+  };
+}
+
+// ==========================================
+// EXPORT ZIP (EXCEL + PHOTOS)
+// ==========================================
+function setExportProgress(pct, text) {
+  document.getElementById('exportProgressContainer').style.display = 'block';
+  document.getElementById('exportProgressFill').style.width = pct + '%';
+  document.getElementById('exportStatus').textContent = text;
+}
+
+async function exportExcelZIP() {
+  const request = db.transaction(["visites"], "readonly").objectStore("visites").getAll();
+  request.onsuccess = async () => {
+    const visites = request.result;
+    if (visites.length === 0) { alert("Aucune donnée à exporter."); return; }
+    setExportProgress(10, "Création du classeur Excel…");
+    const zip = new JSZip();
+    const photoFolder = zip.folder("Photos");
+    const processDataToSheet = (list) => list.map((v, index) => {
+      let photoLien = "Pas de photo";
+      if (v.photo) {
+        const photoName = `Photo_${v.type_fluide}_${v.numero_serie}_${v.id}.jpg`;
+        photoFolder.file(photoName, v.photo.split(',')[1], { base64: true });
+        photoLien = { f: `=HYPERLINK("Photos/${photoName}", "📷 Voir la Photo")` };
+      }
+      return {
+        "N°": index + 1,
+        "N° Contrat": v.contrat,
+        "Gérance EA / BT": v.type_fluide,
+        "Remise facture": v.remise_facture,
+        "N° Compteur": v.numero_serie,
+        "Index système": v.index_systeme ? Number(v.index_systeme) : "",
+        "Date index système": v.date_saisie_systeme,
+        "Index Terrain": Number(v.index_terrain),
+        "Observation": v.remarque,
+        "Photo": photoLien,
+        "Latitude GPS": v.gps_lat,
+        "Longitude GPS": v.gps_lng
+      };
+    });
+    setExportProgress(25, "Tri par fluide…");
+    await new Promise(r => setTimeout(r, 50));
+    const dataTous = processDataToSheet(visites);
+    const dataEau  = processDataToSheet(visites.filter(v => v.type_fluide === 'EA'));
+    const dataElec = processDataToSheet(visites.filter(v => v.type_fluide === 'BT'));
+    setExportProgress(45, "Génération des feuilles Excel…");
+    await new Promise(r => setTimeout(r, 50));
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(dataTous), "Totalité");
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(dataEau),  "Eau (EA)");
+    XLSX.utils.book_append_sheet(workbook, XLSX.utils.json_to_sheet(dataElec), "Electricité (BT)");
+    const wscols = [{wch:5},{wch:15},{wch:15},{wch:15},{wch:20},{wch:15},{wch:18},{wch:15},{wch:30},{wch:20},{wch:15},{wch:15}];
+    ["Totalité","Eau (EA)","Electricité (BT)"].forEach(s => workbook.Sheets[s]['!cols'] = wscols);
+    setExportProgress(65, "Compression des photos…");
+    await new Promise(r => setTimeout(r, 50));
+    const excelBuffer = XLSX.write(workbook, { bookType: 'xlsx', type: 'array' });
+    zip.file(`Fiche_Controle_Bout_Ligne_${new Date().toISOString().slice(0,10)}.xlsx`, excelBuffer);
+    setExportProgress(80, "Génération du ZIP…");
+    zip.generateAsync({ type: "blob" }, (meta) => {
+      setExportProgress(80 + Math.round(meta.percent * 0.18), `Compression : ${Math.round(meta.percent)}%`);
+    }).then(content => {
+      setExportProgress(100, "✅ Téléchargement en cours…");
+      const url = URL.createObjectURL(content);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Export_Complet_Terrain_${new Date().toISOString().slice(0,10)}.zip`;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      setTimeout(() => {
+        document.getElementById('exportProgressContainer').style.display = 'none';
+      }, 2000);
+    });
+  };
+}
+
+// ==========================================
+// RAPPORT WORD
+// ==========================================
+async function exportWordReport() {
+  const request = db.transaction(["visites"], "readonly").objectStore("visites").getAll();
+  request.onsuccess = async () => {
+    const visites = request.result;
+    if (visites.length === 0) { alert("Aucune donnée à exporter."); return; }
+
+    const si = sessionInfo || {};
+    const agence = si.agence || '—';
+    const nom1   = si.nom1   || '—';
+    const mat1   = si.mat1   || '—';
+    const nom2   = (si.hasComp && si.nom2) ? si.nom2 : '';
+    const mat2   = (si.hasComp && si.mat2) ? si.mat2 : '';
+
+    const dateRapport = new Date().toLocaleDateString('fr-FR', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+    const dateISO     = new Date().toISOString().slice(0,10);
+
+    // Stats
+    const totalVisites       = visites.length;
+    const visitesEA          = visites.filter(v => v.type_fluide === 'EA');
+    const visitesBT          = visites.filter(v => v.type_fluide === 'BT');
+    const avecPhoto          = visites.filter(v => v.photo).length;
+    const facturesRemises    = visites.filter(v => v.remise_facture === 'Oui').length;
+    const facturesAbsent     = visites.filter(v => v.remise_facture === 'Absent').length;
+    const facturesNonRemises = visites.filter(v => v.remise_facture === 'Non').length;
+    const tauxRemise         = totalVisites > 0 ? Math.round((facturesRemises / totalVisites) * 100) : 0;
+    const verifiesSys        = visites.filter(v => v.index_systeme).length;
+    const avecRemarque       = visites.filter(v => v.remarque && v.remarque.trim()).length;
+
+    let ecartsData = [];
+    let ecartsBigCount = 0;
+    visites.forEach(v => {
+      if (v.index_systeme && v.index_terrain) {
+        const diff = Math.abs(Number(v.index_systeme) - Number(v.index_terrain));
+        ecartsData.push({ serie: v.numero_serie, fluide: v.type_fluide, terrain: v.index_terrain, systeme: v.index_systeme, diff });
+        if (diff > 100) ecartsBigCount++;
+      }
+    });
+    const moyEcart = ecartsData.length > 0 ? Math.round(ecartsData.reduce((s, e) => s + e.diff, 0) / ecartsData.length) : null;
+
+    const totalWidth = 10360;
+
+    const tblRow = (cells, isHeader=false) => {
+      const shade   = isHeader ? '<w:shd w:val="clear" w:color="auto" w:fill="1E2D3D"/>' : '';
+      const textColor = isHeader ? '<w:color w:val="FFFFFF"/>' : '';
+      const bold    = isHeader ? '<w:b/>' : '';
+      return `<w:tr>${cells.map(([txt,w]) => `
+        <w:tc>
+          <w:tcPr>${shade}<w:tcW w:w="${w}" w:type="dxa"/><w:tcMar><w:top w:w="80" w:type="dxa"/><w:bottom w:w="80" w:type="dxa"/><w:left w:w="120" w:type="dxa"/><w:right w:w="120" w:type="dxa"/></w:tcMar></w:tcPr>
+          <w:p><w:pPr><w:jc w:val="${isHeader?'center':'left'}"/></w:pPr><w:r><w:rPr>${bold}${textColor}<w:sz w:val="18"/><w:szCs w:val="18"/></w:rPr><w:t xml:space="preserve">${txt}</w:t></w:r></w:p>
+        </w:tc>`).join('')}</w:tr>`;
+    };
+
+    let compteurRows = '';
+    visites.forEach((v, i) => {
+      const diff = (v.index_systeme && v.index_terrain)
+        ? Math.abs(Number(v.index_systeme) - Number(v.index_terrain)) : '-';
+      const photo = v.photo ? '✔' : '—';
+      const rem   = v.remise_facture === 'Oui' ? '✔' : (v.remise_facture === 'Absent' ? '🚪' : '✗');
+      compteurRows += tblRow([
+        [(i+1).toString(), 380],
+        [v.type_fluide === 'EA' ? 'EA 💧' : 'BT ⚡', 600],
+        [v.numero_serie || '—', 1400],
+        [v.contrat || '—', 1200],
+        [v.index_terrain || '—', 900],
+        [v.index_systeme || '—', 900],
+        [typeof diff === 'number' ? diff.toString() : '—', 700],
+        [rem, 600],
+        [photo, 600],
+        [v.remarque ? v.remarque.substring(0,28) : '—', 2480]
+      ]);
+    });
+
+    // Signature block
+    const sigBlock = (label, nom, mat) => `
+      <w:tc>
+        <w:tcPr><w:tcW w:w="4900" w:type="dxa"/><w:tcMar><w:top w:w="80" w:type="dxa"/><w:bottom w:w="80" w:type="dxa"/><w:left w:w="120" w:type="dxa"/><w:right w:w="120" w:type="dxa"/></w:tcMar></w:tcPr>
+        <w:p><w:pPr><w:spacing w:after="60"/></w:pPr><w:r><w:rPr><w:b/><w:sz w:val="20"/><w:szCs w:val="20"/></w:rPr><w:t>${label}</w:t></w:r></w:p>
+        <w:p><w:pPr><w:spacing w:after="40"/></w:pPr><w:r><w:rPr><w:sz w:val="20"/><w:szCs w:val="20"/></w:rPr><w:t xml:space="preserve">Nom : ${nom}</w:t></w:r></w:p>
+        ${mat ? `<w:p><w:pPr><w:spacing w:after="40"/></w:pPr><w:r><w:rPr><w:sz w:val="20"/><w:szCs w:val="20"/></w:rPr><w:t xml:space="preserve">Matricule : ${mat}</w:t></w:r></w:p>` : ''}
+        <w:p><w:pPr><w:spacing w:after="300"/></w:pPr><w:r><w:rPr><w:sz w:val="20"/><w:szCs w:val="20"/></w:rPr><w:t>Signature :</w:t></w:r></w:p>
+      </w:tc>`;
+
+    const sigRow = nom2
+      ? `<w:tr>${sigBlock('Agent Principal', nom1, mat1)}${sigBlock('Accompagnateur', nom2, mat2)}</w:tr>`
+      : `<w:tr>${sigBlock('Agent de Contrôle', nom1, mat1)}<w:tc><w:tcPr><w:tcW w:w="4900" w:type="dxa"/></w:tcPr><w:p><w:r><w:rPr><w:sz w:val="20"/></w:rPr><w:t></w:t></w:r></w:p></w:tc></w:tr>`;
+
+    const agentsText = nom2
+      ? `${nom1} (${mat1}) et ${nom2} (${mat2})`
+      : `${nom1} (${mat1})`;
+
+    const docXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+  xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+  xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+  mc:Ignorable="">
+<w:body>
+
+<w:p>
+  <w:pPr><w:jc w:val="center"/><w:spacing w:before="720" w:after="120"/></w:pPr>
+  <w:r><w:rPr><w:b/><w:color w:val="1E2D3D"/><w:sz w:val="52"/><w:szCs w:val="52"/></w:rPr>
+    <w:t>RAPPORT DE CONTRÔLE BOUT DE LIGNE</w:t></w:r>
+</w:p>
+<w:p>
+  <w:pPr><w:jc w:val="center"/><w:spacing w:before="0" w:after="120"/></w:pPr>
+  <w:r><w:rPr><w:color w:val="1a73e8"/><w:sz w:val="26"/><w:szCs w:val="26"/></w:rPr>
+    <w:t xml:space="preserve">${agence}</w:t></w:r>
+</w:p>
+<w:p>
+  <w:pPr><w:jc w:val="center"/><w:spacing w:before="160" w:after="480"/></w:pPr>
+  <w:r><w:rPr><w:color w:val="555555"/><w:sz w:val="22"/><w:szCs w:val="22"/></w:rPr>
+    <w:t>Date de génération : ${dateRapport}</w:t></w:r>
+</w:p>
+
+<w:p><w:pPr><w:pBdr><w:bottom w:val="single" w:sz="6" w:space="1" w:color="1E2D3D"/></w:pBdr><w:spacing w:before="0" w:after="360"/></w:pPr></w:p>
+
+<!-- IDENTIFICATION -->
+<w:p>
+  <w:pPr><w:spacing w:before="240" w:after="120"/></w:pPr>
+  <w:r><w:rPr><w:b/><w:color w:val="1E2D3D"/><w:sz w:val="28"/><w:szCs w:val="28"/></w:rPr>
+    <w:t>I. IDENTIFICATION DU DOCUMENT</w:t></w:r>
+</w:p>
+<w:p><w:pPr><w:spacing w:after="80"/></w:pPr>
+  <w:r><w:rPr><w:b/><w:sz w:val="22"/><w:szCs w:val="22"/></w:rPr><w:t xml:space="preserve">Organisme : </w:t></w:r>
+  <w:r><w:rPr><w:sz w:val="22"/><w:szCs w:val="22"/></w:rPr><w:t xml:space="preserve">${agence}</w:t></w:r>
+</w:p>
+<w:p><w:pPr><w:spacing w:after="80"/></w:pPr>
+  <w:r><w:rPr><w:b/><w:sz w:val="22"/><w:szCs w:val="22"/></w:rPr><w:t xml:space="preserve">Objet : </w:t></w:r>
+  <w:r><w:rPr><w:sz w:val="22"/><w:szCs w:val="22"/></w:rPr><w:t>Rapport de contrôle des compteurs bout de ligne (Eau et Électricité)</w:t></w:r>
+</w:p>
+<w:p><w:pPr><w:spacing w:after="80"/></w:pPr>
+  <w:r><w:rPr><w:b/><w:sz w:val="22"/><w:szCs w:val="22"/></w:rPr><w:t xml:space="preserve">Agent(s) ayant effectué le contrôle : </w:t></w:r>
+  <w:r><w:rPr><w:sz w:val="22"/><w:szCs w:val="22"/></w:rPr><w:t xml:space="preserve">${agentsText}</w:t></w:r>
+</w:p>
+<w:p><w:pPr><w:spacing w:after="80"/></w:pPr>
+  <w:r><w:rPr><w:b/><w:sz w:val="22"/><w:szCs w:val="22"/></w:rPr><w:t xml:space="preserve">Référence du rapport : </w:t></w:r>
+  <w:r><w:rPr><w:sz w:val="22"/><w:szCs w:val="22"/></w:rPr><w:t>CBL-${dateISO}-001</w:t></w:r>
+</w:p>
+
+<!-- RÉSUMÉ -->
+<w:p>
+  <w:pPr><w:spacing w:before="360" w:after="120"/></w:pPr>
+  <w:r><w:rPr><w:b/><w:color w:val="1E2D3D"/><w:sz w:val="28"/><w:szCs w:val="28"/></w:rPr>
+    <w:t>II. RÉSUMÉ EXÉCUTIF</w:t></w:r>
+</w:p>
+<w:p><w:pPr><w:spacing w:after="160"/></w:pPr>
+  <w:r><w:rPr><w:sz w:val="22"/><w:szCs w:val="22"/></w:rPr>
+    <w:t xml:space="preserve">Dans le cadre des opérations de contrôle bout de ligne menées par ${agence}, une sortie terrain a été réalisée par ${agentsText}. Cette opération visait à vérifier les index des compteurs, s&#x2019;assurer de la remise des factures aux clients et à identifier d&#x2019;éventuelles anomalies.</w:t></w:r>
+</w:p>
+<w:p><w:pPr><w:spacing w:after="160"/></w:pPr>
+  <w:r><w:rPr><w:sz w:val="22"/><w:szCs w:val="22"/></w:rPr>
+    <w:t xml:space="preserve">Au total, ${totalVisites} compteur(s) ont été contrôlés, dont ${visitesEA.length} EA (Eau) et ${visitesBT.length} BT (Électricité). Le taux de remise de facture s&#x2019;est établi à ${tauxRemise}% (${facturesRemises} remise(s) sur ${totalVisites - facturesAbsent} clients présents).</w:t></w:r>
+</w:p>
+
+<!-- KPI -->
+<w:p>
+  <w:pPr><w:spacing w:before="360" w:after="120"/></w:pPr>
+  <w:r><w:rPr><w:b/><w:color w:val="1E2D3D"/><w:sz w:val="28"/><w:szCs w:val="28"/></w:rPr>
+    <w:t>III. TABLEAU DE BORD — INDICATEURS CLÉS</w:t></w:r>
+</w:p>
+<w:tbl>
+  <w:tblPr>
+    <w:tblW w:w="${totalWidth}" w:type="dxa"/>
+    <w:tblBorders>
+      <w:top    w:val="single" w:sz="4" w:color="9AB5D0"/>
+      <w:left   w:val="single" w:sz="4" w:color="9AB5D0"/>
+      <w:bottom w:val="single" w:sz="4" w:color="9AB5D0"/>
+      <w:right  w:val="single" w:sz="4" w:color="9AB5D0"/>
+      <w:insideH w:val="single" w:sz="4" w:color="DCE8F5"/>
+      <w:insideV w:val="single" w:sz="4" w:color="DCE8F5"/>
+    </w:tblBorders>
+  </w:tblPr>
+  ${tblRow([['Indicateur', 7000], ['Valeur', 3360]], true)}
+  ${tblRow([['Total compteurs contrôlés', 7000], [totalVisites.toString(), 3360]])}
+  ${tblRow([['Compteurs Eau (EA)', 7000], [visitesEA.length.toString(), 3360]])}
+  ${tblRow([['Compteurs Électricité (BT)', 7000], [visitesBT.length.toString(), 3360]])}
+  ${tblRow([['Factures remises (client présent)', 7000], [facturesRemises + ' (' + tauxRemise + '%)', 3360]])}
+  ${tblRow([['Factures non remises', 7000], [facturesNonRemises.toString(), 3360]])}
+  ${tblRow([['Clients absents lors du passage', 7000], [facturesAbsent.toString(), 3360]])}
+  ${tblRow([['Compteurs vérifiés sur système', 7000], [verifiesSys.toString(), 3360]])}
+  ${tblRow([['Compteurs avec remarques / anomalies', 7000], [avecRemarque.toString(), 3360]])}
+  ${tblRow([['Compteurs avec preuve photographique', 7000], [avecPhoto.toString(), 3360]])}
+  ${ecartsData.length > 0 ? tblRow([['Écart moyen index terrain / système', 7000], [moyEcart + ' unités', 3360]]) : ''}
+  ${ecartsData.length > 0 ? tblRow([['Compteurs avec écart > 100 unités', 7000], [ecartsBigCount.toString(), 3360]]) : ''}
+</w:tbl>
+
+<!-- ANOMALIES -->
+<w:p>
+  <w:pPr><w:spacing w:before="360" w:after="120"/></w:pPr>
+  <w:r><w:rPr><w:b/><w:color w:val="1E2D3D"/><w:sz w:val="28"/><w:szCs w:val="28"/></w:rPr>
+    <w:t>IV. ANOMALIES ET OBSERVATIONS DE TERRAIN</w:t></w:r>
+</w:p>
+<w:p><w:pPr><w:spacing w:after="160"/></w:pPr>
+  <w:r><w:rPr><w:sz w:val="22"/><w:szCs w:val="22"/></w:rPr>
+    <w:t xml:space="preserve">Un total de ${avecRemarque} compteur(s) sur ${totalVisites} a fait l&#x2019;objet d&#x2019;une observation signalée. ${facturesAbsent > 0 ? facturesAbsent + ' client(s) étaient absents lors du passage de l&#x2019;agent.' : ''} Les détails sont consignés dans le tableau annexe.</w:t></w:r>
+</w:p>
+
+<!-- TABLEAU DÉTAILLÉ -->
+<w:p><w:r><w:br w:type="page"/></w:r></w:p>
+<w:p>
+  <w:pPr><w:spacing w:before="0" w:after="200"/></w:pPr>
+  <w:r><w:rPr><w:b/><w:color w:val="1E2D3D"/><w:sz w:val="28"/><w:szCs w:val="28"/></w:rPr>
+    <w:t>ANNEXE — DÉTAIL DES COMPTEURS CONTRÔLÉS</w:t></w:r>
+</w:p>
+<w:tbl>
+  <w:tblPr>
+    <w:tblW w:w="${totalWidth}" w:type="dxa"/>
+    <w:tblBorders>
+      <w:top    w:val="single" w:sz="4" w:color="9AB5D0"/>
+      <w:left   w:val="single" w:sz="4" w:color="9AB5D0"/>
+      <w:bottom w:val="single" w:sz="4" w:color="9AB5D0"/>
+      <w:right  w:val="single" w:sz="4" w:color="9AB5D0"/>
+      <w:insideH w:val="single" w:sz="4" w:color="DCE8F5"/>
+      <w:insideV w:val="single" w:sz="4" w:color="DCE8F5"/>
+    </w:tblBorders>
+  </w:tblPr>
+  ${tblRow([
+    ['N°',380],['Type',600],['N° Série',1400],['Contrat',1200],
+    ['Idx Terrain',900],['Idx Système',900],['Écart',700],
+    ['Fact.',600],['Photo',600],['Observation',2480]
+  ], true)}
+  ${compteurRows}
+</w:tbl>
+
+<!-- SIGNATURES -->
+<w:p><w:r><w:br w:type="page"/></w:r></w:p>
+<w:p>
+  <w:pPr><w:spacing w:before="0" w:after="160"/></w:pPr>
+  <w:r><w:rPr><w:b/><w:color w:val="1E2D3D"/><w:sz w:val="28"/><w:szCs w:val="28"/></w:rPr>
+    <w:t>VISA ET SIGNATURES</w:t></w:r>
+</w:p>
+<w:tbl>
+  <w:tblPr>
+    <w:tblW w:w="${totalWidth}" w:type="dxa"/>
+    <w:tblBorders>
+      <w:top    w:val="single" w:sz="4" w:color="9AB5D0"/>
+      <w:left   w:val="single" w:sz="4" w:color="9AB5D0"/>
+      <w:bottom w:val="single" w:sz="4" w:color="9AB5D0"/>
+      <w:right  w:val="single" w:sz="4" w:color="9AB5D0"/>
+      <w:insideH w:val="single" w:sz="4" w:color="9AB5D0"/>
+      <w:insideV w:val="single" w:sz="4" w:color="9AB5D0"/>
+    </w:tblBorders>
+  </w:tblPr>
+  ${tblRow(nom2
+    ? [['Agent Principal', 4900], ['Accompagnateur', 4900]]
+    : [['Agent de Contrôle', 4900], ['', 4900]], true)}
+  ${sigRow}
+</w:tbl>
+
+<w:sectPr>
+  <w:pgSz w:w="11906" w:h="16838"/>
+  <w:pgMar w:top="1134" w:right="1134" w:bottom="1134" w:left="1134" w:header="709" w:footer="709" w:gutter="0"/>
+</w:sectPr>
+</w:body>
+</w:document>`;
+
+    const contentTypes = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml"  ContentType="application/xml"/>
+  <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+</Types>`;
+    const rels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+</Relationships>`;
+    const wordRels = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+</Relationships>`;
+
+    const docZip = new JSZip();
+    docZip.file("[Content_Types].xml", contentTypes);
+    docZip.folder("_rels").file(".rels", rels);
+    const wordFolder = docZip.folder("word");
+    wordFolder.file("document.xml", docXml);
+    wordFolder.folder("_rels").file("document.xml.rels", wordRels);
+
+    const blob = await docZip.generateAsync({
+      type: "blob",
+      mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `Rapport_CBL_${dateISO}.docx`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    alert("✅ Rapport Word généré avec succès !");
+  };
+}
+</script>
+</body>
+</html>
