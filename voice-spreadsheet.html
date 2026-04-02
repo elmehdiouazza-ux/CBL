@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
+<title>VoiceSheet</title>
+<style>
+:root {
+  --bg: #111318;
+  --surface: #1c1e26;
+  --border: #333646;
+  --accent: #4f9eff;
+  --accent-soft: rgba(79,158,255,0.15);
+  --red: #ff5f5f;
+  --red-soft: rgba(255,95,95,0.15);
+  --green: #3ecf6e;
+  --yellow: #f5c518;
+  --text: #e2e4f0;
+  --muted: #666880;
+  --font: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --mono: ui-monospace, 'Cascadia Code', 'Consolas', 'Menlo', monospace;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text);
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  font-size: 15px;
+}
+
+/* ── HEADER ── */
+#header {
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 10px 12px 8px;
+  flex-shrink: 0;
+}
+#header-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+#logo {
+  font-weight: 800;
+  font-size: 1.1rem;
+  color: var(--accent);
+  letter-spacing: -0.5px;
+  margin-right: auto;
+}
+
+/* Language toggle */
+#lang-toggle {
+  display: flex;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 3px;
+  gap: 3px;
+}
+#lang-toggle button {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-family: var(--font);
+  font-weight: 700;
+  font-size: 0.82rem;
+  padding: 6px 16px;
+  border-radius: 16px;
+  cursor: pointer;
+  transition: all .2s;
+}
+#lang-toggle button.active {
+  background: var(--accent);
+  color: #fff;
+}
+
+/* Mic */
+#mic-btn {
+  width: 48px; height: 48px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  background: var(--surface);
+  font-size: 1.3rem;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all .2s;
+  flex-shrink: 0;
+  position: relative;
+}
+#mic-btn.listening {
+  border-color: var(--red);
+  background: var(--red-soft);
+  animation: ring 1.2s infinite;
+}
+#mic-btn.disabled-mic { opacity: 0.45; }
+@keyframes ring {
+  0%,100% { box-shadow: 0 0 0 0 rgba(255,95,95,.5); }
+  50%      { box-shadow: 0 0 0 12px rgba(255,95,95,0); }
+}
+
+/* Status */
+#statusbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+#cell-ref {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-radius: 6px;
+  padding: 3px 10px;
+  font-family: var(--mono);
+  font-weight: 600;
+  min-width: 44px;
+  text-align: center;
+  font-size: 0.82rem;
+}
+#voice-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  flex: 1;
+  min-width: 0;
+}
+#voice-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--muted);
+  flex-shrink: 0;
+}
+#voice-dot.ready     { background: var(--green); }
+#voice-dot.listening { background: var(--red); animation: blink 1s infinite; }
+#voice-dot.warn      { background: var(--yellow); }
+#voice-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+/* Formula bar */
+#formula-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+#fx-label { color: var(--muted); font-style: italic; font-size: 0.8rem; flex-shrink: 0; }
+#formula-input {
+  flex: 1;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  padding: 6px 10px;
+  outline: none;
+}
+#formula-input:focus { border-color: var(--accent); }
+
+/* ── TOOLBAR ── */
+#toolbar {
+  display: flex;
+  gap: 6px;
+  padding: 8px 12px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  overflow-x: auto;
+}
+#toolbar::-webkit-scrollbar { display: none; }
+.tb-btn {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 0.8rem;
+  padding: 8px 14px;
+  cursor: pointer;
+  white-space: nowrap;
+  display: flex; align-items: center; gap: 5px;
+  flex-shrink: 0;
+  transition: opacity .15s;
+}
+.tb-btn:active { opacity: 0.6; }
+.tb-btn.add  { border-color: rgba(79,158,255,.5); color: var(--accent); }
+.tb-btn.del  { border-color: rgba(255,95,95,.5);  color: var(--red); }
+.tb-btn.exp  { border-color: rgba(62,207,110,.5); color: var(--green); }
+
+/* ── GRID ── */
+#grid-wrapper {
+  flex: 1;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+table {
+  border-collapse: collapse;
+  table-layout: fixed;
+  min-width: 100%;
+}
+.rn {
+  width: 38px; min-width: 38px;
+  background: var(--surface);
+  color: var(--muted);
+  font-size: 0.72rem;
+  text-align: center;
+  border: 1px solid var(--border);
+  user-select: none;
+  vertical-align: middle;
+  height: 44px;
+}
+th.ch {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  height: 46px;
+  min-width: 130px; width: 130px;
+}
+.ch-inner {
+  display: flex;
+  align-items: center;
+  padding: 0 6px;
+  gap: 4px;
+}
+.ch-name {
+  flex: 1;
+  background: none; border: none;
+  color: var(--text);
+  font-family: var(--font);
+  font-weight: 700;
+  font-size: 0.78rem;
+  text-align: center;
+  outline: none;
+  padding: 2px 0;
+}
+.ch-del {
+  background: none; border: none;
+  color: var(--muted);
+  font-size: 0.75rem;
+  cursor: pointer;
+  padding: 4px;
+  line-height: 1;
+}
+.ch-del:active { color: var(--red); }
+th.add-col {
+  min-width: 42px; width: 42px;
+  background: none;
+  border: 1px dashed rgba(79,158,255,.3);
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 1.1rem;
+  text-align: center;
+}
+th.add-col:active { color: var(--accent); }
+td.cell {
+  border: 1px solid var(--border);
+  height: 44px;
+  min-width: 130px; width: 130px;
+  padding: 0;
+  vertical-align: middle;
+}
+td.cell.sel {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+  background: var(--accent-soft);
+}
+td.cell.voicing {
+  outline: 2px solid var(--red);
+  outline-offset: -1px;
+  background: var(--red-soft);
+}
+td.cell input {
+  width: 100%; height: 100%;
+  background: none; border: none;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  padding: 0 10px;
+  outline: none;
+}
+.add-row-tr td {
+  border: 1px dashed rgba(79,158,255,.25);
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.8rem;
+  padding: 12px;
+  cursor: pointer;
+}
+.add-row-tr:active td { color: var(--accent); }
+
+/* ── MIC PERMISSION MODAL ── */
+#mic-modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.75);
+  z-index: 2000;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+#mic-modal.show { display: flex; }
+#mic-modal-box {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 24px 20px;
+  max-width: 360px;
+  width: 100%;
+}
+#mic-modal-box h2 {
+  font-size: 1rem;
+  margin-bottom: 12px;
+  color: var(--yellow);
+  display: flex; align-items: center; gap: 8px;
+}
+#mic-modal-box p {
+  font-size: 0.82rem;
+  color: var(--muted);
+  line-height: 1.6;
+  margin-bottom: 10px;
+}
+#mic-modal-box ol {
+  padding-left: 18px;
+  font-size: 0.82rem;
+  color: var(--text);
+  line-height: 1.8;
+  margin-bottom: 16px;
+}
+#mic-modal-box .modal-note {
+  background: var(--bg);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 0.78rem;
+  color: var(--muted);
+  margin-bottom: 16px;
+  font-family: var(--mono);
+  word-break: break-all;
+}
+.modal-btn {
+  width: 100%;
+  padding: 12px;
+  border-radius: 10px;
+  border: none;
+  font-family: var(--font);
+  font-weight: 700;
+  font-size: 0.88rem;
+  cursor: pointer;
+  margin-top: 6px;
+}
+.modal-btn.primary { background: var(--accent); color: #fff; }
+.modal-btn.secondary { background: var(--bg); color: var(--muted); border: 1px solid var(--border); }
+
+/* ── INTERIM OVERLAY ── */
+#interim-box {
+  position: fixed;
+  bottom: 20px; left: 50%;
+  transform: translateX(-50%);
+  background: rgba(17,19,24,.95);
+  border: 1.5px solid var(--red);
+  border-radius: 12px;
+  padding: 10px 18px;
+  font-size: 0.85rem;
+  color: var(--red);
+  display: none;
+  z-index: 999;
+  max-width: 90vw;
+  text-align: center;
+}
+#interim-box.show { display: block; }
+
+/* ── TOAST ── */
+#toast {
+  position: fixed;
+  bottom: 20px; left: 50%;
+  transform: translateX(-50%) translateY(80px);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 20px;
+  font-size: 0.82rem;
+  color: var(--text);
+  transition: transform .3s;
+  z-index: 1000;
+  max-width: 90vw;
+  text-align: center;
+}
+#toast.show { transform: translateX(-50%) translateY(0); }
+
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div id="header">
+  <div id="header-top">
+    <div id="logo">⬡ VoiceSheet</div>
+    <div id="lang-toggle">
+      <button id="btn-en" class="active" onclick="setLang('en')">EN</button>
+      <button id="btn-fr" onclick="setLang('fr')">FR</button>
+    </div>
+    <button id="mic-btn" onclick="toggleMic()">🎤</button>
+  </div>
+  <div id="statusbar">
+    <div id="cell-ref">—</div>
+    <div id="voice-indicator">
+      <div id="voice-dot"></div>
+      <span id="voice-label">—</span>
+    </div>
+  </div>
+  <div id="formula-bar">
+    <span id="fx-label">fx</span>
+    <input id="formula-input" type="text" placeholder="—"/>
+  </div>
+</div>
+
+<!-- TOOLBAR -->
+<div id="toolbar">
+  <button class="tb-btn add" onclick="addRow()">＋ <span id="lbl-add-row">Add Row</span></button>
+  <button class="tb-btn add" onclick="addColumn()">＋ <span id="lbl-add-col">Add Column</span></button>
+  <button class="tb-btn del" onclick="deleteSelectedRow()">✕ <span id="lbl-del-row">Delete Row</span></button>
+  <button class="tb-btn del" onclick="clearTable()">✕ <span id="lbl-clear">Clear All</span></button>
+  <button class="tb-btn exp" onclick="exportCSV()">⬇ <span id="lbl-export">Export Excel</span></button>
+</div>
+
+<!-- GRID -->
+<div id="grid-wrapper">
+  <table id="sheet">
+    <thead id="sheet-head"></thead>
+    <tbody id="sheet-body"></tbody>
+  </table>
+</div>
+
+<!-- INTERIM VOICE DISPLAY -->
+<div id="interim-box"></div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<!-- MIC PERMISSION MODAL -->
+<div id="mic-modal">
+  <div id="mic-modal-box">
+    <h2 id="modal-title">⚠️ Microphone blocked</h2>
+    <p id="modal-p1">Your browser blocks microphone access for files opened directly from your phone. Here is how to fix it:</p>
+    <ol id="modal-steps">
+      <li>Open <strong>Chrome</strong> on your phone</li>
+      <li>Go to the address bar and type:<br/>
+        <div class="modal-note" id="modal-url">chrome://flags/#unsafely-treat-insecure-origin-as-secure</div>
+      </li>
+      <li>Enable that flag and add <code>file://</code> as allowed</li>
+      <li><strong>OR</strong> — easiest: upload this file to any website (e.g. GitHub Pages) and open via <code>https://</code></li>
+    </ol>
+    <p id="modal-p2" style="color:var(--yellow);font-size:0.8rem;">💡 The spreadsheet works without mic — you can still type manually in every cell.</p>
+    <button class="modal-btn primary" onclick="closeMicModal()">OK, I understand</button>
+  </div>
+</div>
+
+<script>
+// ── STATE ──────────────────────────────────────────────
+let lang = 'en';
+let cols = [];
+let numRows = 0;
+let data = [];
+let sel = null;
+let recognition = null;
+let isListening = false;
+let speechOK = false;
+let baseText = '';
+
+// ── LABELS ─────────────────────────────────────────────
+const L = {
+  en: {
+    addRow:'Add Row', addCol:'Add Column', delRow:'Delete Row',
+    clearAll:'Clear All', export:'Export Excel',
+    ready:'Ready — tap a cell, then 🎤',
+    listening:'🎤 Listening… speak now',
+    noSupport:'Mic blocked — tap 🎤 for help',
+    noCell:'Tap a cell first!',
+    cleared:'Table cleared.',
+    exported:'Downloaded! Open in Excel.',
+    colName: n => 'Col '+n,
+    addRowLbl:'＋  Add Row',
+    noSel:'No row selected.',
+    modalTitle:'⚠️ Microphone blocked',
+    modalP1:'Browsers block mic for files opened locally. To use voice:',
+    modalSteps:[
+      'Use <strong>Chrome</strong> on Android',
+      'The file must be served via <strong>https://</strong> (not file://)',
+      'Easiest fix: send the file to yourself via <strong>Google Drive</strong>, open it there, then open its link in Chrome',
+      '<strong>OR</strong> upload to any free host (GitHub Pages, Netlify Drop…)'
+    ],
+    modalNote:'💡 The spreadsheet works fully without mic — just type in the cells normally.',
+  },
+  fr: {
+    addRow:'Ajouter ligne', addCol:'Ajouter colonne', delRow:'Supprimer ligne',
+    clearAll:'Tout effacer', export:'Exporter Excel',
+    ready:'Prêt — touchez une cellule, puis 🎤',
+    listening:'🎤 Écoute… parlez maintenant',
+    noSupport:'Micro bloqué — touchez 🎤 pour aide',
+    noCell:'Touchez une cellule d\'abord !',
+    cleared:'Tableau effacé.',
+    exported:'Téléchargé ! Ouvrez dans Excel.',
+    colName: n => 'Col '+n,
+    addRowLbl:'＋  Ajouter ligne',
+    noSel:'Aucune ligne sélectionnée.',
+    modalTitle:'⚠️ Microphone bloqué',
+    modalP1:'Les navigateurs bloquent le micro pour les fichiers ouverts localement. Pour utiliser la voix :',
+    modalSteps:[
+      'Utilisez <strong>Chrome</strong> sur Android',
+      'Le fichier doit être servi via <strong>https://</strong> (pas file://)',
+      'Solution simple : envoyez le fichier vers <strong>Google Drive</strong>, ouvrez-le, puis ouvrez le lien dans Chrome',
+      '<strong>OU</strong> hébergez sur un hôte gratuit (GitHub Pages, Netlify Drop…)'
+    ],
+    modalNote:'💡 Le tableau fonctionne sans micro — vous pouvez toujours taper dans les cellules normalement.',
+  }
+};
+const t = k => L[lang][k];
+
+// ── INIT ───────────────────────────────────────────────
+function init() {
+  cols = ['Name', 'Value', 'Notes'];
+  numRows = 5;
+  data = Array.from({length: numRows}, () => Array(cols.length).fill(''));
+  renderTable();
+  initSpeech();
+  updateLabels();
+}
+
+// ── LANGUAGE ───────────────────────────────────────────
+function setLang(l) {
+  lang = l;
+  document.getElementById('btn-en').classList.toggle('active', l==='en');
+  document.getElementById('btn-fr').classList.toggle('active', l==='fr');
+  updateLabels();
+  if (recognition) {
+    if (isListening) recognition.stop();
+    initSpeech();
+  }
+}
+
+function updateLabels() {
+  setText('lbl-add-row', t('addRow'));
+  setText('lbl-add-col', t('addCol'));
+  setText('lbl-del-row', t('delRow'));
+  setText('lbl-clear',   t('clearAll'));
+  setText('lbl-export',  t('export'));
+  const lbl = isListening ? t('listening') : (speechOK ? t('ready') : t('noSupport'));
+  setVoiceLabel(lbl);
+  refreshAddRowBtn();
+}
+
+function setText(id, v) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = v;
+}
+
+// ── RENDER ─────────────────────────────────────────────
+function colLetter(c) {
+  let s='', i=c+1;
+  while(i>0){ s=String.fromCharCode(64+(i%26||26))+s; i=Math.floor((i-1)/26); }
+  return s;
+}
+
+function renderTable() {
+  renderHead();
+  renderBody();
+  updateLabels();
+}
+
+function renderHead() {
+  const thead = document.getElementById('sheet-head');
+  const tr = document.createElement('tr');
+  const corner = document.createElement('th');
+  corner.className = 'rn';
+  tr.appendChild(corner);
+
+  cols.forEach((name, c) => {
+    const th = document.createElement('th');
+    th.className = 'ch';
+    const inner = document.createElement('div');
+    inner.className = 'ch-inner';
+
+    const nameInp = document.createElement('input');
+    nameInp.className = 'ch-name';
+    nameInp.value = name;
+    nameInp.addEventListener('change', () => { cols[c] = nameInp.value; });
+    nameInp.addEventListener('focus', () => nameInp.select());
+
+    const delBtn = document.createElement('button');
+    delBtn.className = 'ch-del';
+    delBtn.textContent = '✕';
+    delBtn.addEventListener('click', () => deleteCol(c));
+
+    inner.appendChild(nameInp);
+    inner.appendChild(delBtn);
+    th.appendChild(inner);
+    tr.appendChild(th);
+  });
+
+  const addTh = document.createElement('th');
+  addTh.className = 'add-col';
+  addTh.textContent = '+';
+  addTh.addEventListener('click', addColumn);
+  tr.appendChild(addTh);
+
+  thead.innerHTML = '';
+  thead.appendChild(tr);
+}
+
+function renderBody() {
+  const tbody = document.getElementById('sheet-body');
+  tbody.innerHTML = '';
+  for (let r = 0; r < numRows; r++) {
+    tbody.appendChild(makeRowEl(r));
+  }
+  refreshAddRowBtn();
+}
+
+function makeRowEl(r) {
+  const tr = document.createElement('tr');
+  const rn = document.createElement('td');
+  rn.className = 'rn';
+  rn.textContent = r + 1;
+  tr.appendChild(rn);
+  for (let c = 0; c < cols.length; c++) {
+    tr.appendChild(makeCellEl(r, c));
+  }
+  return tr;
+}
+
+function makeCellEl(r, c) {
+  const td = document.createElement('td');
+  td.className = 'cell' + cellClass(r, c);
+  td.id = 'c'+r+'_'+c;
+
+  const inp = document.createElement('input');
+  inp.type = 'text';
+  inp.value = data[r][c] || '';
+  inp.setAttribute('autocomplete','off');
+  inp.setAttribute('autocorrect','off');
+  inp.setAttribute('spellcheck','false');
+
+  td.addEventListener('touchstart', () => selectCell(r, c), {passive:true});
+  inp.addEventListener('focus', () => selectCell(r, c));
+  inp.addEventListener('input', () => {
+    data[r][c] = inp.value;
+    baseText = inp.value;
+    document.getElementById('formula-input').value = inp.value;
+  });
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); moveSel(1, 0); }
+    if (e.key === 'Tab')   { e.preventDefault(); moveSel(0, e.shiftKey?-1:1); }
+  });
+
+  td.appendChild(inp);
+  return td;
+}
+
+function cellClass(r, c) {
+  if (!sel || sel.r!==r || sel.c!==c) return '';
+  return isListening ? ' voicing' : ' sel';
+}
+
+function refreshAddRowBtn() {
+  const tbody = document.getElementById('sheet-body');
+  const old = tbody.querySelector('.add-row-tr');
+  if (old) old.remove();
+
+  const tr = document.createElement('tr');
+  tr.className = 'add-row-tr';
+  const rnTd = document.createElement('td');
+  rnTd.className = 'rn';
+  tr.appendChild(rnTd);
+  const td = document.createElement('td');
+  td.colSpan = cols.length + 1;
+  td.textContent = t('addRowLbl');
+  tr.appendChild(td);
+  tr.addEventListener('click', addRow);
+  tbody.appendChild(tr);
+}
+
+// ── SELECTION ──────────────────────────────────────────
+function selectCell(r, c) {
+  const prev = sel;
+  sel = {r, c};
+  baseText = data[r][c] || '';
+  document.getElementById('formula-input').value = data[r][c] || '';
+  document.getElementById('cell-ref').textContent = colLetter(c)+(r+1);
+
+  if (prev) {
+    const oldTd = document.getElementById('c'+prev.r+'_'+prev.c);
+    if (oldTd) oldTd.className = 'cell';
+  }
+  const newTd = document.getElementById('c'+r+'_'+c);
+  if (newTd) newTd.className = 'cell' + (isListening ? ' voicing' : ' sel');
+}
+
+function moveSel(dr, dc) {
+  if (!sel) return;
+  const r = Math.max(0, Math.min(numRows-1, sel.r+dr));
+  const c = Math.max(0, Math.min(cols.length-1, sel.c+dc));
+  selectCell(r, c);
+  const inp = document.querySelector('#c'+r+'_'+c+' input');
+  if (inp) inp.focus();
+}
+
+// ── ADD / DELETE ───────────────────────────────────────
+function addRow() {
+  const r = numRows++;
+  data.push(Array(cols.length).fill(''));
+  const tbody = document.getElementById('sheet-body');
+  const addTr = tbody.querySelector('.add-row-tr');
+  tbody.insertBefore(makeRowEl(r), addTr);
+}
+
+function deleteSelectedRow() {
+  if (!sel) { showToast(t('noSel')); return; }
+  const r = sel.r;
+  numRows--;
+  data.splice(r, 1);
+  sel = null;
+  document.getElementById('cell-ref').textContent = '—';
+  document.getElementById('formula-input').value = '';
+  renderBody();
+}
+
+function addColumn() {
+  cols.push(L[lang].colName(cols.length+1));
+  data.forEach(row => row.push(''));
+  renderTable();
+}
+
+function deleteCol(c) {
+  if (cols.length <= 1) { showToast('Need at least 1 column.'); return; }
+  cols.splice(c, 1);
+  data.forEach(row => row.splice(c, 1));
+  if (sel && sel.c >= cols.length) sel = null;
+  renderTable();
+}
+
+function clearTable() {
+  data = data.map(row => row.map(()=>''));
+  sel = null; baseText = '';
+  document.getElementById('cell-ref').textContent = '—';
+  document.getElementById('formula-input').value = '';
+  renderBody();
+  showToast(t('cleared'));
+}
+
+// ── EXPORT AS CSV (opens in Excel) ────────────────────
+function exportCSV() {
+  // Build CSV content
+  const escape = v => {
+    const s = String(v);
+    // If value contains comma, quote, or newline — wrap in quotes
+    if (s.includes(',') || s.includes('"') || s.includes('\n')) {
+      return '"' + s.replace(/"/g, '""') + '"';
+    }
+    return s;
+  };
+
+  const lines = [];
+  // Header row
+  lines.push(cols.map(escape).join(','));
+  // Data rows
+  for (let r = 0; r < numRows; r++) {
+    lines.push(data[r].map(escape).join(','));
+  }
+
+  const csv = '\uFEFF' + lines.join('\r\n'); // BOM for Excel UTF-8
+  const blob = new Blob([csv], {type: 'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'voicesheet.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+
+  showToast(t('exported'));
+}
+
+// ── SPEECH ─────────────────────────────────────────────
+function initSpeech() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) {
+    speechOK = false;
+    document.getElementById('voice-dot').className = 'warn';
+    document.getElementById('mic-btn').classList.add('disabled-mic');
+    setVoiceLabel(t('noSupport'));
+    return;
+  }
+
+  speechOK = true;
+  recognition = new SR();
+  recognition.continuous = true;
+  recognition.interimResults = true;
+  recognition.lang = lang === 'fr' ? 'fr-FR' : 'en-US';
+  recognition.maxAlternatives = 1;
+
+  recognition.onstart = () => {
+    isListening = true;
+    document.getElementById('mic-btn').classList.add('listening');
+    document.getElementById('voice-dot').className = 'listening';
+    setVoiceLabel(t('listening'));
+    if (sel) {
+      const td = document.getElementById('c'+sel.r+'_'+sel.c);
+      if (td) td.className = 'cell voicing';
+    }
+  };
+
+  recognition.onend = () => {
+    isListening = false;
+    document.getElementById('mic-btn').classList.remove('listening');
+    document.getElementById('voice-dot').className = 'ready';
+    setVoiceLabel(t('ready'));
+    document.getElementById('interim-box').classList.remove('show');
+    if (sel) {
+      const td = document.getElementById('c'+sel.r+'_'+sel.c);
+      if (td) td.className = 'cell sel';
+    }
+  };
+
+  recognition.onerror = e => {
+    isListening = false;
+    document.getElementById('mic-btn').classList.remove('listening');
+    document.getElementById('interim-box').classList.remove('show');
+    if (sel) {
+      const td = document.getElementById('c'+sel.r+'_'+sel.c);
+      if (td) td.className = 'cell sel';
+    }
+
+    if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+      // Browser blocked mic — show help modal
+      speechOK = false;
+      document.getElementById('voice-dot').className = 'warn';
+      setVoiceLabel(t('noSupport'));
+      openMicModal();
+    } else if (e.error !== 'no-speech' && e.error !== 'aborted') {
+      showToast('Mic error: ' + e.error);
+      document.getElementById('voice-dot').className = 'ready';
+      setVoiceLabel(t('ready'));
+    } else {
+      document.getElementById('voice-dot').className = 'ready';
+      setVoiceLabel(t('ready'));
+    }
+  };
+
+  recognition.onresult = e => {
+    if (!sel) return;
+    let interim = '';
+    let finalNew = '';
+
+    for (let i = e.resultIndex; i < e.results.length; i++) {
+      const txt = e.results[i][0].transcript;
+      if (e.results[i].isFinal) { finalNew += txt; }
+      else { interim += txt; }
+    }
+
+    if (finalNew) {
+      const sp = (baseText && !baseText.endsWith(' ')) ? ' ' : '';
+      baseText = (baseText + sp + finalNew.trim()).trim();
+      data[sel.r][sel.c] = baseText;
+      const inp = document.querySelector('#c'+sel.r+'_'+sel.c+' input');
+      if (inp) inp.value = baseText;
+      document.getElementById('formula-input').value = baseText;
+    }
+
+    const interimEl = document.getElementById('interim-box');
+    if (interim) {
+      interimEl.textContent = '🎤 ' + (baseText ? baseText + ' ' : '') + interim;
+      interimEl.classList.add('show');
+    } else {
+      interimEl.classList.remove('show');
+    }
+  };
+
+  document.getElementById('mic-btn').classList.remove('disabled-mic');
+  document.getElementById('voice-dot').className = 'ready';
+  setVoiceLabel(t('ready'));
+}
+
+function toggleMic() {
+  if (!speechOK) {
+    openMicModal();
+    return;
+  }
+  if (!sel) {
+    showToast(t('noCell'));
+    document.querySelectorAll('.cell').forEach(td => {
+      td.style.outline = '1px solid rgba(79,158,255,.4)';
+      setTimeout(()=>{ td.style.outline=''; }, 700);
+    });
+    return;
+  }
+  if (isListening) {
+    recognition.stop();
+  } else {
+    baseText = data[sel.r][sel.c] || '';
+    try { recognition.start(); } catch(e) {}
+  }
+}
+
+function setVoiceLabel(txt) {
+  document.getElementById('voice-label').textContent = txt;
+}
+
+// ── MIC MODAL ──────────────────────────────────────────
+function openMicModal() {
+  const modal = document.getElementById('mic-modal');
+  // Fill content in current language
+  document.getElementById('modal-title').textContent = t('modalTitle');
+  document.getElementById('modal-p1').textContent = t('modalP1');
+  const ol = document.getElementById('modal-steps');
+  ol.innerHTML = '';
+  t('modalSteps').forEach(step => {
+    const li = document.createElement('li');
+    li.innerHTML = step;
+    ol.appendChild(li);
+  });
+  document.getElementById('modal-p2').textContent = t('modalNote');
+  modal.classList.add('show');
+}
+
+function closeMicModal() {
+  document.getElementById('mic-modal').classList.remove('show');
+}
+
+// ── FORMULA BAR SYNC ───────────────────────────────────
+document.getElementById('formula-input').addEventListener('input', function() {
+  if (!sel) return;
+  data[sel.r][sel.c] = this.value;
+  baseText = this.value;
+  const inp = document.querySelector('#c'+sel.r+'_'+sel.c+' input');
+  if (inp) inp.value = this.value;
+});
+
+// ── TOAST ──────────────────────────────────────────────
+let toastTmr;
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTmr);
+  toastTmr = setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+init();
+</script>
+</body>
+</html>
